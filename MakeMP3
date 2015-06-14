@@ -1,0 +1,290 @@
+#!/usr/bin/env perl -w
+##########
+# 
+# MakeMP3
+# 
+# A tool for creating MP3 files from lossless full-disc rips with cue sheets.
+# Copyright 2015 Andrew Paul Landells.
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# 
+##########
+use strict;
+use Getopt::Long;
+use Data::Dumper;
+use Path::Class;
+
+##########
+# Global configuration
+my $FFMPEG = 'ffmpeg';
+my $FFMPEGOPTS = '-c:a pcm_s32le -f wav';
+my $LAME = 'lame';
+my $LAMEOPTS = '--preset extreme -k';
+my $GAIN = 'aacgain';
+my $GAINOPTS = '-a -c';
+my $DESTDIR = 'makemp3';
+my $VER = '1.0.0';
+
+##########
+# option variables with default value (false)
+my $AG = '';
+my $DEBUG = ''; 
+my $DRY_RUN = ''; 
+my $HELP = '';
+my $VERSION = '';
+
+GetOptions (
+    'debug'   => \$DEBUG,
+    'dry-run' => \$DRY_RUN,
+    'ag'      => \$AG,
+    'help'    => \$HELP,
+    'version' => \$VERSION,
+);
+
+if ($VERSION) { print <<END;
+MakeMP3 $VER
+Copyright 2015 Andrew Paul Landells
+
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+END
+; exit 0 }
+
+if ($HELP) { print <<END;
+Usage: $0 [--ag] [--debug] [--dry-run] source_file ...
+END
+; exit 0 }
+
+foreach (@ARGV) {
+    # Cache the path to the cuesheet, since everything else is relative to it.
+    my ($cuepath, $cuefile);
+    if (m/^(.*)[\\\/](.*?)$/) {
+        ($cuepath, $cuefile) = ($1, $2);
+    } else {
+        $cuepath = "./";
+        $cuefile = $_;
+    }
+    print "Path: $cuepath\nFile: $cuefile\n\n" if $DEBUG;
+
+    # Read cuesheet and build data structure
+    my $cuesheet = &parse_cuesheet(file($cuepath, $cuefile));
+    print "Failed to open $_\n" and next unless defined $cuesheet;
+    print Dumper $cuesheet if $DEBUG;
+
+    # Create destination directory structure for generated MP3s
+    my $destpath = file( $DESTDIR, &sanitise_filename($cuesheet->{PERFORMER}), &sanitise_filename($cuesheet->{TITLE}) );
+    my $mkdir = "mkdir -p \"$destpath\"";
+    print "\t$mkdir\n\n" if $DEBUG;
+    system ($mkdir) unless $DRY_RUN;
+
+    my @tracks;
+    print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
+    print "$cuesheet->{TITLE}:\n";
+    for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
+        for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
+            my $dn = &disc_num($cuesheet);
+            my $tn = $dn.sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
+            my $ip = file( $cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
+            my $title = &sanitise_filename("$tn ".$cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{TITLE}.".mp3");
+            my $dest = file ( $destpath."/".$title );
+            my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
+            my $metadata = &get_metadata($cuesheet, $file, $track);
+            my $artwork = &locate_artwork($cuesheet, $cuepath, $cuefile);
+            my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS - | $LAME --quiet $LAMEOPTS $metadata $artwork - \"$dest\" 2>/dev/null";
+            push (@tracks, "\"$dest\"");
+
+            print "... $title\n";
+            print "\t$cmd\n\n" if $DEBUG;
+            system ($cmd) unless $DRY_RUN;
+        }
+    }
+    if ($AG) {
+        print "*** Applying album gain\n";
+        my $gaincmd = "$GAIN -q $GAINOPTS ".join (' ',@tracks)." 2>&1 >/dev/null";
+        print "\t$gaincmd\n\n" if $DEBUG;
+        system ($gaincmd) unless $DRY_RUN;
+    }
+}
+
+##########
+sub disc_num {
+    my ($cuesheet) = @_;
+    return $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
+    return '';
+}
+
+##########
+sub locate_artwork {
+    my ($cuesheet, $cuepath, $cuefile) = @_;
+    return " --ti \"".file($cuepath, $cuesheet->{ARTWORK})."\"" if defined $cuesheet->{ARTWORK};
+    return "";
+}
+
+##########
+sub get_metadata {
+    my ($cuesheet, $file, $track) = @_;
+
+    my $comp    = &meta_override($cuesheet, "COMPILATION"               );
+    my $albumt  = &meta_override($cuesheet, "TITLE"                     );
+    my $albuma  = &meta_override($cuesheet, "PERFORMER"                 );
+    my $trackt  = &meta_override($cuesheet, "TITLE",      $file, $track );
+    my $tracka  = &meta_override($cuesheet, "PERFORMER",  $file, $track );
+    my $genre   = &meta_override($cuesheet, "GENRE",      $file, $track );
+    my $date    = &meta_override($cuesheet, "DATE",       $file, $track );
+    my $comment = &meta_override($cuesheet, "COMMENT",    $file, $track );
+    my $writer  = &meta_override($cuesheet, "SONGWRITER", $file, $track );
+    my $tn      = &meta_override($cuesheet, "TRACK",      $file, $track );
+    my $tt      = &meta_override($cuesheet, "TOTAL_TRACKS",             );
+
+    my $dn = 1; 
+    $dn = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
+    my $td = $dn;
+    $td = $cuesheet->{TOTALDISCS} if defined $cuesheet->{TOTALDISCS};
+
+    my $metadata;
+    $metadata  = " --id3v2-only --ignore-tag-errors";
+    $metadata .= " --tv TSSE=\"$LAMEOPTS\"";
+    $metadata .= " --tv TENC=\"Encoded using MakeMP3 $VER\"";
+    $metadata .= " --tn $tn/$tt";
+    $metadata .= " --tv TPOS=$dn/$td";
+    $metadata .= " --tv TCMP=1" if defined ($comp) && $comp =~ /TRUE/i;
+
+    $metadata .= " --tl \"$albumt\""      if defined ($albumt);
+    $metadata .= " --tv TPE2=\"$albuma\"" if defined ($albuma);
+    $metadata .= " --tt \"$trackt\""      if defined ($trackt);
+    $metadata .= " --ta \"$tracka\""      if defined ($tracka);
+
+    $metadata .= " --tg \"$genre\""       if defined ($genre);
+    $metadata .= " --ty \"$date\""        if defined ($date);
+    $metadata .= " --tc \"$comment\""     if defined ($comment);
+    $metadata .= " --tv TCOM=\"$writer\"" if defined ($writer);
+
+    return $metadata;
+}
+
+##########
+sub meta_override {
+    my ($cuesheet, $field, $file, $track) = @_;
+    return $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{$field} if (defined $file) and (defined $track) and (defined $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{$field});
+    return $cuesheet->{$field} if defined $cuesheet->{$field};
+    return undef;
+}
+
+##########
+sub get_time {
+    # CD timestamps are of the form minutes:seconds:frames, where frames are 1/75th of a second.
+    # ffmpeg timestamps are decimal seconds to arbitrary precision.
+    my ($cuesheet, $file, $track, $index) = @_;
+    if (defined $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]) {
+        my $time = $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{'INDEX'}->[$index];
+        if (defined $time && $time =~ m/.*:.*:.*/) {
+            my ($m, $s, $f) = split /:/,$time;
+            return ($m * 60) + $s + ($f / 75);
+        }
+    }
+    return undef;
+}
+
+##########
+sub get_ffmpegtimes {
+    my ($cuesheet, $file, $track) = @_;
+    my $this = &get_time($cuesheet, $file, $track,   1);
+    my $next = &get_time($cuesheet, $file, $track+1, 1);
+    my $ss = '';
+    my $t  = '';
+    if (defined $this) {
+        $ss .= "-ss $this";
+        if (defined $next) {
+            my $time = $next - $this;
+            $t .= "-t $time";
+        }
+    }
+    return ("$ss $t");
+}
+
+##########
+sub parse_cuesheet {
+    my ($cuesheet) = @_;
+    open(my $fh, "<".$cuesheet) or return undef;
+    my @cuesheet;
+    while (<$fh>) {
+        s/\r//g;
+        s/\n//g;
+        push @cuesheet, $_;
+    }
+    close ($fh);
+
+    my $data = {};
+    my $file = -1;
+    my $track = -1;
+    my $ttracks = 0;
+
+    for (my $i = 0 ; $i <= $#cuesheet ; $i++) {
+        if ($cuesheet[$i] =~ m/^\s*FILE "(.*)" WAVE/) {
+            $file++;
+            $data->{FILE}->[$file]->{FILE} = $1;
+            $track = -1;
+            next;
+        }
+        if ($cuesheet[$i] =~ m/^\s*TRACK (\d+) AUDIO/) {
+            $track++;
+            $data->{FILE}->[$file]->{TRACKS}->[$track]->{TRACK} = $1;
+            $ttracks = $1 if ($1 > $ttracks);
+            next;
+        }
+        if ($cuesheet[$i] =~ m/^\s*INDEX (\d+) (.*)$/) {
+            $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
+            next;
+        }
+
+        my ($k, $v) = &parse_cueline($cuesheet[$i]);
+        next unless $k;
+        if ($file >= 0) {
+            $data->{FILE}->[$file]->{TRACKS}->[$track]->{$k} = $v;
+        } else {
+            $data->{$k} = $v;
+        }
+    }
+    $data->{TOTAL_TRACKS} = $ttracks;
+    return $data;
+}
+
+##########
+sub parse_cueline {
+    my ($line) = @_;
+    $line =~ s/^[^0-9A-Za-z]*//; # remove all non alphanumerics from the start of the line.
+    $line =~ s/^\s*//;
+    $line =~ s/^REM //;
+    
+    return ($1, $2) if ($line =~ m/^(.*?) \"(.*)\".*?$/);
+    return ($1, $2) if ($line =~ m/^(\w+?) (\w+)/);
+    return (undef, undef);
+}
+
+##########
+sub sanitise_filename {
+    my ($filename) = @_;
+    $filename = "Unknown" unless defined $filename; # If an artist or title is missing, say it's unknown.
+    $filename =~ s/[^[:ascii:]]//g; # Remove all non-ASCII characters
+    $filename =~ s!/!-!g;
+    $filename =~ s!\\!-!g;
+    $filename =~ s!:!-!g;
+    $filename =~ s!\*!-!g;
+    $filename =~ s!\?!!g;
+    return $filename;
+}
+
+##########
+
