@@ -9,8 +9,8 @@ aacgain, to build an MP3 library with correct metadata.
 
 MakeMP3 takes one or more cue sheets on the command line and parses them to
 create ffmpeg and lame command lines to produce MP3s. It works with full-disc
-images or track-by-track rips. The audio can be either WAV files or any
-other lossless codec supported by ffmpeg, so should work with FLAC, WavPack, etc..
+images or track-by-track rips. The audio can be either WAV or any other
+lossless codec supported by ffmpeg including FLAC and WavPack.
 
 The metadata of the output MP3 files is *always* based on the cue sheet; any
 metadata in the audio files is ignored. Please see the section on
@@ -48,7 +48,7 @@ Cue Sheets and Metadata
 =======================
 
 The cue-sheet file format originated in CDRWIN as a way of representing the
-structure of an audio CD or CD-ROM independently from the data itself. The format
+structure of an audio CD or CD-ROM independently of the data itself. The format
 encapsulates both the important track information from an audio CD's table of
 contents (TOC) and certain subcode-embedded metadata such as index marks and
 CD-Text.
@@ -83,14 +83,14 @@ not found, will fall back to the corresponding top-level entry (if present).
 TITLE
     Specifies the "song name" field if defined at the track level
     Specifies the "album" field if defined at the top level
-    If a track-level definition isn't found, MakeMP3 will attempt to use the
-    top-level definition for both "song name" and "album"
+    If a track-level definition isn't found, MakeMP3 will use the top-level
+	definition (if any) for both "song name" and "album"
 
 PERFORMER
     Specifies the "artist" field if defined at the track level
     Specifies the "album artist" field if defined at the top level
-    If a track-level definition isn't found, MakeMP3 will attempt to use the
-    top-level definition for both "artist" and "album artist"
+    If a track-level definition isn't found, MakeMP3 will use the top-level
+	definition (if any) for both "artist" and "album artist"
 
 SONGWRITER
     Specifies the "composer" field
@@ -118,9 +118,9 @@ REM COMPILATION TRUE
     Sets the "Part of a compilation" flag
 
 TRACK nn AUDIO
-    The TRACK directive is a mandatory field for each track of a cue sheet.
-    MakeMP3 also uses it to set the track-number tag. The total number of
-    tracks is set to the highest track number declared in the cue sheet.
+    The TRACK directive is mandatory for each track of a cue sheet; MakeMP3
+	also uses it to set the track-number tag. The total number of tracks is set
+	to the highest track number declared in the cue sheet.
 
 Bugs, Known Issues and Planned Features
 =======================================
@@ -131,10 +131,10 @@ fairly limited in many regards and isn't tremendously configurable.
  *  lame and aacgain settings are hard-coded into MakeMP3. These should be
     user-customisable, ideally in a separate configuration file.
 
- *  ffmpeg, lame (and aacgain) must be on your path for MakeMP3 to work.
+ *  ffmpeg, lame (and aacgain if using --ag) must be on your path for MakeMP3 to work.
 
  *  The encoder should be decoupled from MakeMP3 so that something other than
-    lame can be used instead. Ideally, this will use an abstract templating
+    lame can be used instead. Ideally, this will involve an abstract templating
     scheme much like EAC's so that any encoder can be easily supported.
 
  *  Track-gain support needs to be added.
@@ -152,8 +152,8 @@ author at <andy@soton.ac.uk> -- I can't make any promises about what further
 development or features will go into MakeMP3, but I'm certainly willing to
 consider suggestions. Please feel free to submit patches or pull requests.
 MakeMP3 is distributed as Free Software in the hopes that it will be useful to
-other people. However, if you like it and wish to make a donation you can do so
-sing PayPal with the address listed above.
+other people. If you find it useful and wish to make a donation, you can do so
+via PayPal using the e-mail address listed above.
 
 Licensing
 =========
