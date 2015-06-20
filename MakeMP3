@@ -194,16 +194,23 @@ sub meta_override {
 }
 
 ##########
-sub get_time {
-    # CD timestamps are of the form minutes:seconds:frames, where frames are 1/75th of a second.
+sub convert_time {
+    # CD timestamps are of the form minutes:seconds:frames
+    # where frames are 1/75th of a second.
     # ffmpeg timestamps are decimal seconds to arbitrary precision.
+    my ($time) = @_;
+    if (defined $time && $time =~ m/.*:.*:.*/) {
+        my ($m, $s, $f) = split /:/,$time;
+        return ($m * 60) + $s + ($f / 75);
+    }
+    return undef;
+}
+
+##########
+sub get_time_index {
     my ($cuesheet, $file, $track, $index) = @_;
     if (defined $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]) {
-        my $time = $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{'INDEX'}->[$index];
-        if (defined $time && $time =~ m/.*:.*:.*/) {
-            my ($m, $s, $f) = split /:/,$time;
-            return ($m * 60) + $s + ($f / 75);
-        }
+        return &convert_time($cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$index]);
     }
     return undef;
 }
@@ -211,13 +218,17 @@ sub get_time {
 ##########
 sub get_ffmpegtimes {
     my ($cuesheet, $file, $track) = @_;
-    my $this = &get_time($cuesheet, $file, $track,   1);
-    my $next = &get_time($cuesheet, $file, $track+1, 1);
+    my $this = &get_time_index($cuesheet, $file, $track,   1);
+    my $stop = &convert_time($cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{END});
+    my $next = &get_time_index($cuesheet, $file, $track+1, 1);
     my $ss = '';
     my $t  = '';
     if (defined $this) {
         $ss .= "-ss $this";
-        if (defined $next) {
+        if (defined $stop) {
+            my $time = $stop - $this;
+            $t .= "-t $time";
+        } elsif (defined $next) {
             my $time = $next - $this;
             $t .= "-t $time";
         }
@@ -280,7 +291,7 @@ sub parse_cueline {
     $line =~ s/^REM //;
     
     return ($1, $2) if ($line =~ m/^(.*?) \"(.*)\".*?$/);
-    return ($1, $2) if ($line =~ m/^(\w+?) (\w+)/);
+    return ($1, $2) if ($line =~ m/^(\w+?) (.+)/);
     return (undef, undef);
 }
 
