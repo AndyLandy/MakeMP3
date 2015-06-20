@@ -13,8 +13,8 @@ images or track-by-track rips. The audio can be either WAV or any other
 lossless codec supported by ffmpeg including FLAC and WavPack.
 
 The metadata of the output MP3 files is *always* based on the cue sheet; any
-metadata in the audio files is ignored. Please see the section on
-metadata further down for more details as to what metadata MakeMP3 supports.
+metadata in the audio files is ignored. Please see the section on metadata
+further down for more details as to what metadata MakeMP3 supports.
 
 Usage
 =====
@@ -73,12 +73,13 @@ FILE "CDImage.wv" WAVE
         TITLE "The second track"
         INDEX 01 05:23:47
 
-MakeMP3 uses many of these cue-sheet directives to provide metadata for the output
-MP3 files. As the cue-sheet format is relatively limited, some standard comment
-types are also used by MakeMP3; supported cue-sheet fields are listed below.
-Note that some fields can appear at either the top level, the track level, or
-both. For most metadata fields, MakeMP3 will search at the track level, and, if
-not found, will fall back to the corresponding top-level entry (if present).
+MakeMP3 uses many of these cue-sheet directives to provide metadata for the
+output MP3 files. As the cue-sheet format is relatively limited, some standard
+comment types are also used by MakeMP3; supported cue-sheet fields are listed
+below.  Note that some fields can appear at either the top level, the track
+level, or both. For most metadata fields, MakeMP3 will search at the track
+level, and, if not found, will fall back to the corresponding top-level entry
+(if present).
 
 TITLE
     Specifies the "song name" field if defined at the track level
@@ -131,7 +132,8 @@ fairly limited in many regards and isn't tremendously configurable.
  *  lame and aacgain settings are hard-coded into MakeMP3. These should be
     user-customisable, ideally in a separate configuration file.
 
- *  ffmpeg, lame (and aacgain if using --ag) must be on your path for MakeMP3 to work.
+ *  ffmpeg, lame (and aacgain if using --ag) must be on your path for MakeMP3
+    to work.
 
  *  The encoder should be decoupled from MakeMP3 so that something other than
     lame can be used instead. Ideally, this will involve an abstract templating
