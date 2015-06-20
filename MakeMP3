@@ -277,7 +277,7 @@ sub parse_cueline {
 sub sanitise_filename {
     my ($filename) = @_;
     $filename = "Unknown" unless defined $filename; # If an artist or title is missing, say it's unknown.
-    $filename =~ s/[^[:ascii:]]//g; # Remove all non-ASCII characters
+    $filename =~ s/[^[:ascii:]]/-/g; # Replace all non-ASCII characters
     $filename =~ s!/!-!g;
     $filename =~ s!\\!-!g;
     $filename =~ s!:!-!g;
