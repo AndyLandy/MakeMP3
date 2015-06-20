@@ -156,6 +156,8 @@ Revision History
 ================
 v1.1.0
  *  Added functionality to selectively skip tracks.
+ *  Tweaked artwork code to be more consistent with other metadata, allowing
+    REM ARTWORK directives to be specified at the top level and track level.
 
 v1.0.0
  *  First release.
