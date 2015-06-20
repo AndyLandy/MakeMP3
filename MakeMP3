@@ -83,29 +83,33 @@ foreach (@ARGV) {
     print "Failed to open $_\n" and next unless defined $cuesheet;
     print Dumper $cuesheet if $DEBUG;
 
-    # Create destination directory structure for generated MP3s
-    my $destpath = file( $DESTDIR, &sanitise_filename($cuesheet->{PERFORMER}), &sanitise_filename($cuesheet->{TITLE}) );
-    my $mkdir = "mkdir -p \"$destpath\"";
-    print "\t$mkdir\n\n" if $DEBUG;
-    system ($mkdir) unless $DRY_RUN;
-
     my @tracks;
     print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
     print "$cuesheet->{TITLE}:\n";
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
+            # Create destination directory structure for generated MP3
+            my $destpath = file( $DESTDIR, &sanitise_filename($cuesheet->{PERFORMER}), &sanitise_filename($cuesheet->{TITLE}) );
+            my $mkdir = "mkdir -p \"$destpath\"";
+
+            # Create filename for generated MP3
             my $dn = &disc_num($cuesheet);
             my $tn = $dn.sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
             my $ip = file( $cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
             my $title = &sanitise_filename("$tn ".$cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{TITLE}.".mp3");
             my $dest = file ( $destpath."/".$title );
+
+            # Build commandline to generate MP3
             my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
             my $metadata = &get_metadata($cuesheet, $file, $track);
             my $artwork = &locate_artwork($cuesheet, $cuepath, $cuefile);
             my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS - | $LAME --quiet $LAMEOPTS $metadata $artwork - \"$dest\" 2>/dev/null";
             push (@tracks, "\"$dest\"");
 
+            # Run the commands
             print "... $title\n";
+            print "\t$mkdir\n" if $DEBUG;
+            system ($mkdir) unless $DRY_RUN;
             print "\t$cmd\n\n" if $DEBUG;
             system ($cmd) unless $DRY_RUN;
         }
