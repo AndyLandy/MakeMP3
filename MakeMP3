@@ -108,7 +108,7 @@ foreach (@ARGV) {
             # Build commandline to generate MP3
             my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
             my $metadata = &get_metadata($cuesheet, $file, $track);
-            my $artwork = &locate_artwork($cuesheet, $cuepath, $cuefile);
+            my $artwork = &locate_artwork($cuesheet, $cuepath, $cuefile, $file, $track);
             my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS - | $LAME --quiet $LAMEOPTS $metadata $artwork - \"$dest\" 2>/dev/null";
             push (@tracks, "\"$dest\"");
 
@@ -137,8 +137,9 @@ sub disc_num {
 
 ##########
 sub locate_artwork {
-    my ($cuesheet, $cuepath, $cuefile) = @_;
-    return " --ti \"".file($cuepath, $cuesheet->{ARTWORK})."\"" if defined $cuesheet->{ARTWORK};
+    my ($cuesheet, $cuepath, $cuefile, $file, $track) = @_;
+    my $artwork = &meta_override($cuesheet, 'ARTWORK', $file, $track);
+    return " --ti \"".file($cuepath, $artwork)."\"" if defined $artwork;
     return "";
 }
 
