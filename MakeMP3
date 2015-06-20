@@ -34,7 +34,7 @@ my $LAMEOPTS = '--preset extreme -k';
 my $GAIN = 'aacgain';
 my $GAINOPTS = '-a -c';
 my $DESTDIR = 'makemp3';
-my $VER = '1.0.0';
+my $VER = '1.1.0';
 
 ##########
 # option variables with default value (false)
