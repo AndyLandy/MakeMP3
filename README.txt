@@ -31,14 +31,14 @@ The command-line options work as follows:
                 perceived loudness of the entire album and applies a lossless
                 gain change to approximately match it to a reference of 89dB
                 sound pressure level.
-    
+
                 For more specifics about adjusting gain, how it works, and why
                 you might want to do this, you should look into 'mp3gain'.
 
     --debug     Prints out lots of debugging information, which is mostly useful
                 for development purposes, but can also be helpful to work out
                 why your cue sheets aren't generating the output you expect.
-    
+
     --dry-run   Performs a dry run for checking that your cue sheets are
                 well-formed and can be parsed by MakeMP3. Combining --debug and
                 --dry-run is a good way to test what MakeMP3 will do before you
@@ -85,13 +85,13 @@ TITLE
     Specifies the "song name" field if defined at the track level
     Specifies the "album" field if defined at the top level
     If a track-level definition isn't found, MakeMP3 will use the top-level
-	definition (if any) for both "song name" and "album"
+    definition (if any) for both "song name" and "album"
 
 PERFORMER
     Specifies the "artist" field if defined at the track level
     Specifies the "album artist" field if defined at the top level
     If a track-level definition isn't found, MakeMP3 will use the top-level
-	definition (if any) for both "artist" and "album artist"
+    definition (if any) for both "artist" and "album artist"
 
 SONGWRITER
     Specifies the "composer" field
@@ -126,22 +126,25 @@ REM SKIP TRUE
 
 TRACK nn AUDIO
     The TRACK directive is mandatory for each track of a cue sheet; MakeMP3
-	also uses it to set the track-number tag. The total number of tracks is set
-	to the highest track number declared in the cue sheet.
+    also uses it to set the track-number tag. The total number of tracks is set
+    to the highest track number declared in the cue sheet.
 
 INDEX nn mm:ss:ff
     INDEX directives are used to declare timestamps in the cue sheet. They are
     of the form mm:ss:ff -- minutes, seconds and frames. A frame is defined as
-    1/75th of a second. The cue sheet format mandates that all tracks must have
-    an INDEX 01 entry, declaring the start of the track, and may optionally
-    have other INDEX markers. If a track has a pregap, that can be represented
-    using an index value of 00. Higher indexes are also permitted, they are
-    used to make sub-sections within a track.
+    1/75th of a second. The cue sheet format (but not MakeMP3 itself) mandates
+    that every track have an INDEX 01 directive for its start; others are
+    optional, including INDEX 00, which represents the start of the track's
+    pregap, if any. Indexes 02 onward are typically used for marking
+    subsections (e.g. movements). Although the cue-sheet format does not
+    explicitly support fractional and out-of-range values in timestamp fields,
+    MakeMP3 will process these correctly, making e.g. 99.5:66:108.3 correspond
+    to 100:37:33.3.
 
-    MakeMP3 currently only uses INDEX 01 values. A track is assumed to start at
-    its INDEX 01 timestamp, and end at the INDEX 01 timestamp of the subsequent
-    track (if present.) If MakeMP3 cannot find a start or end time to use from
-    the cue sheet, the start or end time of the whole file is used instead.
+    MakeMP3 currently only uses INDEX 01 values. A track is encoded from its
+    INDEX 01 to the INDEX 01 of the following track (if present). If MakeMP3
+    cannot find a track's start or end time in the cue sheet, the current audio
+    file's start or end is used instead.
 
 REM END mm:ss:ff
     REM END directives are timestamps, formatted the same as INDEX markers.
