@@ -88,13 +88,19 @@ foreach (@ARGV) {
     print "$cuesheet->{TITLE}:\n";
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
+            # Find out what track we're at
+            my $dn = &disc_num($cuesheet);
+            my $tn = $dn.sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
+
+            # Check to see if we're being asked to skip this track
+            my $skip = &meta_override($cuesheet, "SKIP", $file, $track);
+            print "... Track $tn skipped!\n" and next if defined ($skip) && $skip =~ /TRUE/i;
+
             # Create destination directory structure for generated MP3
             my $destpath = file( $DESTDIR, &sanitise_filename($cuesheet->{PERFORMER}), &sanitise_filename($cuesheet->{TITLE}) );
             my $mkdir = "mkdir -p \"$destpath\"";
 
             # Create filename for generated MP3
-            my $dn = &disc_num($cuesheet);
-            my $tn = $dn.sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
             my $ip = file( $cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
             my $title = &sanitise_filename("$tn ".$cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{TITLE}.".mp3");
             my $dest = file ( $destpath."/".$title );
