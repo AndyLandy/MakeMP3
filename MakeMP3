@@ -272,6 +272,7 @@ sub parse_cuesheet {
         }
 
         my ($k, $v) = &parse_cueline($cuesheet[$i]);
+        $v =~ s/\"/\\\"/g; # If there are any quotes in there, escape them
         next unless $k;
         if ($file >= 0) {
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{$k} = $v;
@@ -302,6 +303,7 @@ sub sanitise_filename {
     $filename =~ s/[^[:ascii:]]/-/g; # Replace all non-ASCII characters
     $filename =~ s!/!-!g;
     $filename =~ s!\\!-!g;
+    $filename =~ s!\"!-!g;
     $filename =~ s!:!-!g;
     $filename =~ s!\*!-!g;
     $filename =~ s!\?!!g;
