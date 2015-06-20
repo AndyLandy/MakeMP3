@@ -118,6 +118,12 @@ REM TOTALDISCS
 REM COMPILATION TRUE
     Sets the "Part of a compilation" flag
 
+REM SKIP TRUE
+    Causes MakeMP3 to completely skip a track. Useful if you only want to
+    encode a subset of the tracks. Particularly useful for albums with hidden
+    tracks at the end, preceded by lots of silence. If this directive is put
+    at the top level of the cue sheet, the entire album is skipped.
+
 TRACK nn AUDIO
     The TRACK directive is mandatory for each track of a cue sheet; MakeMP3
 	also uses it to set the track-number tag. The total number of tracks is set
@@ -145,6 +151,14 @@ EAC's own 'non-compliant' cue-sheet format isn't supported: MakeMP3's internal
 representation makes this nontrivial to implement. If you really care that much
 about your pregaps, consider ripping your CDs as full-disc rips rather than
 track-by-tracks.
+
+Revision History
+================
+v1.1.0
+ *  Added functionality to selectively skip tracks.
+
+v1.0.0
+ *  First release.
 
 Contacting the author
 =====================
