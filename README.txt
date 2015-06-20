@@ -129,6 +129,25 @@ TRACK nn AUDIO
 	also uses it to set the track-number tag. The total number of tracks is set
 	to the highest track number declared in the cue sheet.
 
+INDEX nn mm:ss:ff
+    INDEX directives are used to declare timestamps in the cue sheet. They are
+    of the form mm:ss:ff -- minutes, seconds and frames. A frame is defined as
+    1/75th of a second. The cue sheet format mandates that all tracks must have
+    an INDEX 01 entry, declaring the start of the track, and may optionally
+    have other INDEX markers. If a track has a pregap, that can be represented
+    using an index value of 00. Higher indexes are also permitted, they are
+    used to make sub-sections within a track.
+
+    MakeMP3 currently only uses INDEX 01 values. A track is assumed to start at
+    its INDEX 01 timestamp, and end at the INDEX 01 timestamp of the subsequent
+    track (if present.) If MakeMP3 cannot find a start or end time to use from
+    the cue sheet, the start or end time of the whole file is used instead.
+
+REM END mm:ss:ff
+    REM END directives are timestamps, formatted the same as INDEX markers.
+    If you specify an END timestamp in a track declaration, that timestamp is
+    used to end the track, instead of the INDEX 01 of the subsequent track.
+
 Bugs, Known Issues and Planned Features
 =======================================
 
@@ -156,8 +175,10 @@ Revision History
 ================
 v1.1.0
  *  Added functionality to selectively skip tracks.
+ *  Support for explicit track-end timestamps using REM END.
  *  Tweaked artwork code to be more consistent with other metadata, allowing
     REM ARTWORK directives to be specified at the top level and track level.
+ *  Permit the use of double quotes in cue sheet directives.
 
 v1.0.0
  *  First release.
