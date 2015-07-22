@@ -123,15 +123,11 @@ foreach (@ARGV) {
             system ($cmd) unless $DRY_RUN;
         }
     }
-    if ($AG) {
-        print "*** Applying album gain\n";
-        my $gaincmd = "$GAIN -q $AGOPTS ".join (' ',@tracks)." 2>&1 >/dev/null";
-        print "\t$gaincmd\n\n" if $DEBUG;
-        system ($gaincmd) unless $DRY_RUN;
-    }
-    else if ($TG) {
-        print "*** Applying track gain\n";
-        my $gaincmd = "$GAIN -q $TGOPTS ".join (' ',@tracks)." 2>&1 >/dev/null";
+    if ($AG or $TG) {
+        my $GAINWORD  =  $TG ? 'track' : 'album';
+        my $GAINOPTS  =  $TG ? $TGOPTS : $AGOPTS;
+        my $gaincmd = "$GAIN -q $GAINOPTS ".join (' ',@tracks)." 2>&1 >/dev/null";
+        print "*** Applying $GAINWORD gain\n";
         print "\t$gaincmd\n\n" if $DEBUG;
         system ($gaincmd) unless $DRY_RUN;
     }
