@@ -32,13 +32,15 @@ my $FFMPEGOPTS = '-c:a pcm_s32le -f wav';
 my $LAME = 'lame';
 my $LAMEOPTS = '--preset extreme -k';
 my $GAIN = 'aacgain';
-my $GAINOPTS = '-a -c';
+my $AGOPTS = '-a -c';
+my $TGOPTS = '-r -c';
 my $DESTDIR = 'makemp3';
 my $VER = '1.1.0';
 
 ##########
 # option variables with default value (false)
 my $AG = '';
+my $TG = '';
 my $DEBUG = ''; 
 my $DRY_RUN = ''; 
 my $HELP = '';
@@ -48,6 +50,7 @@ GetOptions (
     'debug'   => \$DEBUG,
     'dry-run' => \$DRY_RUN,
     'ag'      => \$AG,
+    'tg'      => \$TG,
     'help'    => \$HELP,
     'version' => \$VERSION,
 );
@@ -63,7 +66,7 @@ END
 ; exit 0 }
 
 if ($HELP) { print <<END;
-Usage: $0 [--ag] [--debug] [--dry-run] source_file ...
+Usage: $0 [--ag] [--tg] [--debug] [--dry-run] source_file ...
 END
 ; exit 0 }
 
@@ -122,7 +125,13 @@ foreach (@ARGV) {
     }
     if ($AG) {
         print "*** Applying album gain\n";
-        my $gaincmd = "$GAIN -q $GAINOPTS ".join (' ',@tracks)." 2>&1 >/dev/null";
+        my $gaincmd = "$GAIN -q $AGOPTS ".join (' ',@tracks)." 2>&1 >/dev/null";
+        print "\t$gaincmd\n\n" if $DEBUG;
+        system ($gaincmd) unless $DRY_RUN;
+    }
+    else if ($TG) {
+        print "*** Applying track gain\n";
+        my $gaincmd = "$GAIN -q $TGOPTS ".join (' ',@tracks)." 2>&1 >/dev/null";
         print "\t$gaincmd\n\n" if $DEBUG;
         system ($gaincmd) unless $DRY_RUN;
     }
