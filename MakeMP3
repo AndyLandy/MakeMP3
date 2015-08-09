@@ -29,7 +29,7 @@ use Path::Class;
 ##########
 # Global configuration
 my $FFMPEG = 'ffmpeg';
-my $FFMPEGOPTS = '-c:a pcm_s32le -f wav';
+my $FFMPEGOPTS = '-c:a copy -c:v copy';
 my $LAME = 'lame';
 my $LAMEOPTS = '--preset extreme -k';
 my $GAIN = 'aacgain';
@@ -106,14 +106,14 @@ foreach (@ARGV) {
 
             # Create filename for generated MP3
             my $ip = file( $cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
-            my $title = &sanitise_filename("$tn ".$cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{TITLE}.".mp3");
+            my $title = &sanitise_filename("$tn.m4v");
             my $dest = file ( $destpath."/".$title );
 
             # Build commandline to generate MP3
             my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
             my $metadata = &get_metadata($cuesheet, $file, $track);
             my $artwork = &locate_artwork($cuesheet, $cuepath, $cuefile, $file, $track);
-            my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS - | $LAME --quiet $LAMEOPTS $metadata $artwork - \"$dest\" 2>/dev/null";
+            my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS \"$dest\" ";
             push (@tracks, "\"$dest\"");
 
             # Run the commands
