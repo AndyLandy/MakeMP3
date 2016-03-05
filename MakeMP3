@@ -307,6 +307,8 @@ sub sanitise_filename {
     $filename =~ s!:!-!g;
     $filename =~ s!\*!-!g;
     $filename =~ s!\?!!g;
+	$filename =~ s!\.+$!!;
+	$filename =~ s!\s+$!!;
     return $filename;
 }
 
