@@ -118,18 +118,15 @@ foreach (@ARGV) {
 
             # Run the commands
             print "... $title\n";
-            print "\t$mkdir\n" if $DEBUG;
-            system ($mkdir) unless $DRY_RUN;
-            print "\t$cmd\n\n" if $DEBUG;
-            system ($cmd) unless $DRY_RUN;
+            &sys_cmd ($mkdir);
+            &sys_cmd ($cmd);
         }
     }
     if ($AG or $TG) {
         my ($gainword, $gainopts)  =  $TG ? ('track', $TGOPTS) : ('album', $AGOPTS);
         my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks)." 2>&1 >/dev/null";
         print "*** Applying $gainword gain\n";
-        print "\t$gaincmd\n\n" if $DEBUG;
-        system ($gaincmd) unless $DRY_RUN;
+        &sys_cmd ($gaincmd);
     }
 }
 
