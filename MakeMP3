@@ -134,6 +134,42 @@ foreach (@ARGV) {
 }
 
 ##########
+# Abstract out all system calls to a handler function that supports
+# signal-handling. As a bonus, we can also collapse dryrun and debug
+# behaviour to this one function.
+#
+# NB: Many commands will be invoked via a shell, rather than directly.
+# This means the returncodes will be from bash, not the child process.
+# As such, expect ^C to return an exit code of 130 but no evidence of a signal.
+sub sys_cmd {
+    my ($cmd) = @_;
+    print "\tExecuting command: $cmd\n" if $DEBUG;
+    system ($cmd) unless $DRY_RUN;
+    if ($?) {
+        # We got back a returncode that wasn't zero...
+
+        my $exit = $? >>  8; # Top eight bits are the return code
+        my $core = $? & 128; # Ninth bit is core dump (true/false)
+        my $kill = $? & 127; # Bits 10-16 are the kill signal received
+
+        my $error = "$cmd exited with returncode $exit";
+        $error   .= ", killed with signal $kill" if ($kill);
+        $error   .= ", core dumped" if ($core);
+        warn ($error);
+
+        # If the child process was killed with a signal, we exit too.
+        # We exit with a returncode of SIG+128, just like bash does.
+        exit ($kill + 128) if ($kill); # The child process was killed.
+        exit ($exit) if ($exit > 128 && $exit < 255); # A grandchild was killed, so bash told us.
+
+        # If we died by some other means, return the exit status but keep going!
+        return $exit;
+    }
+    # Otherwise everything was fine!
+    return 0;
+}
+
+##########
 sub disc_num {
     my ($cuesheet) = @_;
     return $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
