@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 ##########
 # 
 # MakeMP3
@@ -21,6 +21,7 @@
 # 
 ##########
 use strict;
+use warnings;
 use Getopt::Long;
 use Data::Dumper;
 use Path::Class;
