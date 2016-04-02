@@ -1,4 +1,4 @@
-MakeMP3 is Copyright 2015 by Andrew Paul Landells. 
+MakeMP3 is Copyright 2015-2016 by Andrew Paul Landells. 
 
 Introduction
 ============
@@ -34,6 +34,11 @@ The command-line options work as follows:
 
                 For more specifics about adjusting gain, how it works, and why
                 you might want to do this, you should look into 'mp3gain'.
+
+    --tg        Apply track gain using aacgain. This estimates the average
+                perceived loudness of each track individually and applies a
+                lossless gain chainge to approximately match it to a reference
+                of 89dB sound pressure level.
 
     --debug     Prints out lots of debugging information, which is mostly useful
                 for development purposes, but can also be helpful to work out
@@ -176,6 +181,10 @@ track-by-tracks.
 
 Revision History
 ================
+v1.2.0
+ *  Added track-gain support
+ *  Improved error-handling
+
 v1.1.0
  *  Added functionality to selectively skip tracks.
  *  Support for explicit track-end timestamps using REM END.
@@ -207,7 +216,7 @@ with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 A copy of the license is included in the section entitled "GNU
 Free Documentation License".
 
-MakeMP3 is Copyright 2015 Andrew Paul Landells
+MakeMP3 is Copyright 2015-2016 Andrew Paul Landells
 
 MakeMP3 is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
