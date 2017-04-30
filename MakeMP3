@@ -305,6 +305,7 @@ sub parse_cuesheet {
             next;
         }
         if ($cuesheet[$i] =~ m/^\s*INDEX (\d+) (.*)$/) {
+			next if $track < 0; # Dodgy cue sheets may cause -1 indices.
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
             next;
         }
