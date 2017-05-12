@@ -149,8 +149,8 @@ sub sys_cmd {
         # We got back a returncode that wasn't zero...
 
         my $exit = $? >>  8; # Top eight bits are the return code
-        my $core = $? & 128; # Ninth bit is core dump (true/false)
-        my $kill = $? & 127; # Bits 10-16 are the kill signal received
+        my $core = $? & 128; # Bit 8 is core dump (true/false)
+        my $kill = $? & 127; # Bits 1-7 are the kill signal received
 
         my $error = "$cmd exited with returncode $exit";
         $error   .= ", killed with signal $kill" if ($kill);
@@ -187,41 +187,52 @@ sub locate_artwork {
 ##########
 sub get_metadata {
     my ($cuesheet, $file, $track) = @_;
+    my %m;
 
-    my $comp    = &meta_override($cuesheet, "COMPILATION"               );
-    my $albumt  = &meta_override($cuesheet, "TITLE"                     );
-    my $albuma  = &meta_override($cuesheet, "PERFORMER"                 );
-    my $trackt  = &meta_override($cuesheet, "TITLE",      $file, $track );
-    my $tracka  = &meta_override($cuesheet, "PERFORMER",  $file, $track );
-    my $genre   = &meta_override($cuesheet, "GENRE",      $file, $track );
-    my $date    = &meta_override($cuesheet, "DATE",       $file, $track );
-    my $comment = &meta_override($cuesheet, "COMMENT",    $file, $track );
-    my $writer  = &meta_override($cuesheet, "SONGWRITER", $file, $track );
-    my $tn      = &meta_override($cuesheet, "TRACK",      $file, $track );
-    my $tt      = &meta_override($cuesheet, "TOTAL_TRACKS",             );
+    $m{enc}     = "Encoded using MakeMP3 $VER";
+    $m{opts}    = $LAMEOPTS;
+    $m{albumt}  = &meta_override($cuesheet, "TITLE"                     );
+    $m{albuma}  = &meta_override($cuesheet, "PERFORMER"                 );
+    $m{trackt}  = &meta_override($cuesheet, "TITLE",      $file, $track );
+    $m{tracka}  = &meta_override($cuesheet, "PERFORMER",  $file, $track );
+    $m{genre}   = &meta_override($cuesheet, "GENRE",      $file, $track );
+    $m{date}    = &meta_override($cuesheet, "DATE",       $file, $track );
+    $m{comment} = &meta_override($cuesheet, "COMMENT",    $file, $track );
+    $m{writer}  = &meta_override($cuesheet, "SONGWRITER", $file, $track );
+    $m{tn}      = &meta_override($cuesheet, "TRACK",      $file, $track );
+    $m{tt}      = &meta_override($cuesheet, "TOTAL_TRACKS",             );
 
-    my $dn = 1; 
-    $dn = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
-    my $td = $dn;
-    $td = $cuesheet->{TOTALDISCS} if defined $cuesheet->{TOTALDISCS};
+    my $comp    = &meta_override($cuesheet, "COMPILATION");
+    $m{comp}    = 0;
+    $m{comp}    = 1 if (defined $comp && $comp =~ m/TRUE/);
 
-    my $metadata;
-    $metadata  = " --id3v2-only --ignore-tag-errors";
-    $metadata .= " --tv TENC=\"MakeMP3 $VER / lame $LAMEOPTS\"";
-    $metadata .= " --tn $tn/$tt";
-    $metadata .= " --tv TPOS=$dn/$td";
-    $metadata .= " --tv TCMP=1" if defined ($comp) && $comp =~ /TRUE/i;
+    $m{dn}      = 1; 
+    $m{dn}      = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
+    $m{td}      = $m{dn};
+    $m{td}      = $cuesheet->{TOTALDISCS} if defined $cuesheet->{TOTALDISCS};
 
-    $metadata .= " --tl \"$albumt\""      if defined ($albumt);
-    $metadata .= " --tv TPE2=\"$albuma\"" if defined ($albuma);
-    $metadata .= " --tt \"$trackt\""      if defined ($trackt);
-    $metadata .= " --ta \"$tracka\""      if defined ($tracka);
+    foreach my $k (keys %m) {
+        $m{$k} = "" unless defined $m{$k};
+    }
 
-    $metadata .= " --tg \"$genre\""       if defined ($genre);
-    $metadata .= " --ty \"$date\""        if defined ($date);
-    $metadata .= " --tc \"$comment\""     if defined ($comment);
-    $metadata .= " --tv TCOM=\"$writer\"" if defined ($writer);
-
+    my $metadata = <<END;
+--id3v2-only --ignore-tag-errors
+--tv TENC="$m{enc}"
+--tv TSSE="$m{opts}"
+--tn $m{tn}/$m{tt}
+--tv TPOS=$m{dn}/$m{td}
+--tv TCMP=$m{comp}
+--tl "$m{albumt}"
+--tv TPE2="$m{albuma}"
+--tt "$m{trackt}"
+--ta "$m{tracka}"
+--tg "$m{genre}"
+--ty "$m{date}"
+--tc "$m{comment}"
+--tv TCOM="$m{writer}"
+END
+    ;
+    $metadata =~ s/\R/ /g;
     return $metadata;
 }
 
@@ -295,9 +306,10 @@ sub parse_cuesheet {
     my $ttracks = 0;
 
     for (my $i = 0 ; $i <= $#cuesheet ; $i++) {
-        if ($cuesheet[$i] =~ m/^\s*FILE "(.*)" WAVE/) {
+        if ($cuesheet[$i] =~ m/^\s*FILE "(.*)" (\w+)/) {
             $file++;
             $data->{FILE}->[$file]->{FILE} = $1;
+            $data->{FILE}->[$file]->{TYPE} = $2;
             $track = -1;
             next;
         }
