@@ -112,9 +112,9 @@ foreach (@ARGV) {
 
             # Build commandline to generate MP3
             my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
-            my $metadata = &get_metadata($cuesheet, $file, $track);
             my $artwork = &locate_artwork($cuesheet, $cuepath, $cuefile, $file, $track);
-            my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS - | $LAME --quiet $LAMEOPTS $metadata $artwork - \"$dest\" 2>/dev/null";
+            my $metadata = &get_metadata($cuesheet, $file, $track, $artwork);
+            my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS - | $LAME --quiet $LAMEOPTS $metadata - \"$dest\" 2>/dev/null";
             push (@tracks, "\"$dest\"");
 
             # Run the commands
@@ -180,13 +180,13 @@ sub disc_num {
 sub locate_artwork {
     my ($cuesheet, $cuepath, $cuefile, $file, $track) = @_;
     my $artwork = &meta_override($cuesheet, 'ARTWORK', $file, $track);
-    return " --ti \"".file($cuepath, $artwork)."\"" if defined $artwork;
+    return file($cuepath, $artwork) if defined $artwork;
     return "";
 }
 
 ##########
 sub get_metadata {
-    my ($cuesheet, $file, $track) = @_;
+    my ($cuesheet, $file, $track, $artwork) = @_;
     my %m;
 
     $m{enc}     = "Encoded using MakeMP3 $VER";
@@ -205,11 +205,11 @@ sub get_metadata {
     my $comp    = &meta_override($cuesheet, "COMPILATION");
     $m{comp}    = 0;
     $m{comp}    = 1 if (defined $comp && $comp =~ m/TRUE/);
-
     $m{dn}      = 1; 
     $m{dn}      = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
     $m{td}      = $m{dn};
     $m{td}      = $cuesheet->{TOTALDISCS} if defined $cuesheet->{TOTALDISCS};
+    $m{artwork} = $artwork;
 
     foreach my $k (keys %m) {
         $m{$k} = "" unless defined $m{$k};
@@ -230,6 +230,7 @@ sub get_metadata {
 --ty "$m{date}"
 --tc "$m{comment}"
 --tv TCOM="$m{writer}"
+--ti "$m{artwork}"
 END
     ;
     $metadata =~ s/\R/ /g;
