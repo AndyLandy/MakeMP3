@@ -122,8 +122,10 @@ foreach (@ARGV) {
             # Build encoder command line.
             my $enc;
             if ($AAC) {
+                $dest .= '.m4a';
                 $enc = &enc_fdkaac($dest, %metadata);
             } else {
+                $dest .= '.mp3';
                 $enc = &enc_lame($dest, %metadata);
             }
 
@@ -228,8 +230,9 @@ sub get_metadata {
 sub enc_fdkaac {
     my ($dest, %m) = @_;
 
+# -p 29 for HE-AAC v2
     my $cmd = <<END;
-fdkaac - -p 29 -m 5 -o "$dest.m4a"
+fdkaac - -p 2 -m 1 -o "$dest"
 --title        "$m{trackt}"
 --artist       "$m{tracka}"
 --album        "$m{albumt}"
@@ -270,7 +273,7 @@ $LAME $LAMEOPTS
 --tc "$m{comment}"
 --tv TCOM="$m{writer}"
 --ti "$m{artwork}"
-- "$dest.mp3" 2>/dev/null
+- "$dest" 2>/dev/null
 END
     ;
     $cmd =~ s/\R/ /g;
