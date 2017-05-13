@@ -46,6 +46,7 @@ my $DEBUG = '';
 my $DRY_RUN = ''; 
 my $HELP = '';
 my $VERSION = '';
+my $AAC = '';
 
 GetOptions (
     'debug'   => \$DEBUG,
@@ -54,6 +55,7 @@ GetOptions (
     'tg'      => \$TG,
     'help'    => \$HELP,
     'version' => \$VERSION,
+    'aac'     => \$AAC,
 );
 
 if ($VERSION) { print <<END;
@@ -101,20 +103,32 @@ foreach (@ARGV) {
             my $skip = &meta_override($cuesheet, "SKIP", $file, $track);
             print "... Track $tn skipped!\n" and next if defined ($skip) && $skip =~ /TRUE/i;
 
-            # Create destination directory structure for generated MP3
+            # Create destination directory structure for output file
             my $destpath = file( $DESTDIR, &sanitise_filename($cuesheet->{PERFORMER}), &sanitise_filename($cuesheet->{TITLE}) );
             my $mkdir = "mkdir -p \"$destpath\"";
 
-            # Create filename for generated MP3
+            # Create filename for the output file
             my $ip = file( $cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
-            my $title = &sanitise_filename("$tn ".$cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{TITLE}.".mp3");
+            my $title = &sanitise_filename("$tn ".$cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{TITLE});
             my $dest = file ( $destpath."/".$title );
 
-            # Build commandline to generate MP3
+            # Build metadata hash
+            my %metadata = &get_metadata($cuesheet, $cuepath, $cuefile, $file, $track);
+
+            # Build ffmpeg command line.
             my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
-            my $artwork = &locate_artwork($cuesheet, $cuepath, $cuefile, $file, $track);
-            my $metadata = &get_metadata($cuesheet, $file, $track, $artwork);
-            my $cmd = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS - | $LAME --quiet $LAMEOPTS $metadata - \"$dest\" 2>/dev/null";
+            my $ff  = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS -";
+
+            # Build encoder command line.
+            my $enc;
+            if ($AAC) {
+                $enc = &enc_fdkaac($dest, %metadata);
+            } else {
+                $enc = &enc_lame($dest, %metadata);
+            }
+
+            # Build full command line.
+            my $cmd = "$ff | $enc";
             push (@tracks, "\"$dest\"");
 
             # Run the commands
@@ -177,20 +191,11 @@ sub disc_num {
 }
 
 ##########
-sub locate_artwork {
-    my ($cuesheet, $cuepath, $cuefile, $file, $track) = @_;
-    my $artwork = &meta_override($cuesheet, 'ARTWORK', $file, $track);
-    return file($cuepath, $artwork) if defined $artwork;
-    return "";
-}
-
-##########
 sub get_metadata {
-    my ($cuesheet, $file, $track, $artwork) = @_;
+    my ($cuesheet, $cuepath, $cuefile, $file, $track) = @_;
     my %m;
 
-    $m{enc}     = "Encoded using MakeMP3 $VER";
-    $m{opts}    = $LAMEOPTS;
+    $m{encoder} = "Encoded using MakeMP3 $VER";
     $m{albumt}  = &meta_override($cuesheet, "TITLE"                     );
     $m{albuma}  = &meta_override($cuesheet, "PERFORMER"                 );
     $m{trackt}  = &meta_override($cuesheet, "TITLE",      $file, $track );
@@ -202,23 +207,57 @@ sub get_metadata {
     $m{tn}      = &meta_override($cuesheet, "TRACK",      $file, $track );
     $m{tt}      = &meta_override($cuesheet, "TOTAL_TRACKS",             );
 
+    $m{artwork} = file($cuepath, &meta_override($cuesheet, "ARTWORK", $file, $track ));
+
     my $comp    = &meta_override($cuesheet, "COMPILATION");
     $m{comp}    = 0;
     $m{comp}    = 1 if (defined $comp && $comp =~ m/TRUE/);
+
     $m{dn}      = 1; 
     $m{dn}      = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
     $m{td}      = $m{dn};
     $m{td}      = $cuesheet->{TOTALDISCS} if defined $cuesheet->{TOTALDISCS};
-    $m{artwork} = $artwork;
 
-    foreach my $k (keys %m) {
-        $m{$k} = "" unless defined $m{$k};
-    }
+    # Any missing metadata we set as the empty string.
+    foreach my $k (keys %m) { $m{$k} = "" unless defined $m{$k}; }
 
-    my $metadata = <<END;
+    return %m;
+}
+
+##########
+sub enc_fdkaac {
+    my ($dest, %m) = @_;
+
+    my $cmd = <<END;
+fdkaac - -p 29 -m 5 -o "$dest.m4a"
+--title        "$m{trackt}"
+--artist       "$m{tracka}"
+--album        "$m{albumt}"
+--album-artist "$m{albuma}"
+--genre        "$m{genre}"
+--date         "$m{date}"
+--composer     "$m{writer}"
+--comment      "$m{comment}"
+--track        "$m{tn}/$m{tt}"
+--disk         "$m{dn}/$m{td}"
+--tag           cpil:$m{comp}
+--tag-from-file covr:"$m{artwork}"
+2>/dev/null
+END
+    ;
+    $cmd =~ s/\R/ /g;
+    return $cmd;
+}
+
+##########
+sub enc_lame {
+    my ($dest, %m) = @_;
+
+    my $cmd = <<END;
+$LAME $LAMEOPTS
 --id3v2-only --ignore-tag-errors
---tv TENC="$m{enc}"
---tv TSSE="$m{opts}"
+--tv TENC="$m{encoder}"
+--tv TSSE="$LAMEOPTS"
 --tn $m{tn}/$m{tt}
 --tv TPOS=$m{dn}/$m{td}
 --tv TCMP=$m{comp}
@@ -231,10 +270,11 @@ sub get_metadata {
 --tc "$m{comment}"
 --tv TCOM="$m{writer}"
 --ti "$m{artwork}"
+- "$dest.mp3" 2>/dev/null
 END
     ;
-    $metadata =~ s/\R/ /g;
-    return $metadata;
+    $cmd =~ s/\R/ /g;
+    return $cmd;
 }
 
 ##########
