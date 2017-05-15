@@ -234,8 +234,7 @@ sub enc_fdkaac {
     my ($dest, %m) = @_;
     my $cmd = <<END;
 $FDKAAC $FDKAACOPTS -S
---tag            too:"$m{encoder}"
---tag            enc:"fdkaac $FDKAACOPTS"
+--tag            enc:"$m{encoder} / fdkaac $FDKAACOPTS"
 --title         "$m{trackt}"
 --artist        "$m{tracka}"
 --album         "$m{albumt}"
@@ -251,7 +250,7 @@ $FDKAAC $FDKAACOPTS -S
 - -o "$dest"
 END
     ;
-    $cmd =~ s/\R/ /g;
+    $cmd =~ s/\n/ /g;
     return $cmd;
 }
 
@@ -261,8 +260,7 @@ sub enc_lame {
     my $cmd = <<END;
 $LAME $LAMEOPTS
 --id3v2-only --ignore-tag-errors
---tv TENC="$m{encoder}"
---tv TSSE="lame $LAMEOPTS"
+--tv TENC="$m{encoder} / lame $LAMEOPTS"
 --tn $m{tn}/$m{tt}
 --tv TPOS=$m{dn}/$m{td}
 --tv TCMP=$m{comp}
@@ -278,7 +276,7 @@ $LAME $LAMEOPTS
 - "$dest"
 END
     ;
-    $cmd =~ s/\R/ /g;
+    $cmd =~ s/\n/ /g;
     return $cmd;
 }
 
