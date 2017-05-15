@@ -38,7 +38,7 @@ my $GAIN = 'aacgain';
 my $AGOPTS = '-a -c';
 my $TGOPTS = '-r -c';
 my $DESTDIR = 'makemp3';
-my $VER = '1.2.1';
+my $VER = '1.3.0';
 
 ##########
 # option variables with default value (false)
