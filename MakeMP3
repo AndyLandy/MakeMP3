@@ -200,7 +200,7 @@ sub get_metadata {
     my ($cuesheet, $cuepath, $cuefile, $file, $track) = @_;
     my %m;
 
-    $m{encoder} = "Encoded using MakeMP3 $VER";
+    $m{encoder} = "MakeMP3 $VER";
     $m{albumt}  = &meta_override($cuesheet, "TITLE"                     );
     $m{albuma}  = &meta_override($cuesheet, "PERFORMER"                 );
     $m{trackt}  = &meta_override($cuesheet, "TITLE",      $file, $track );
@@ -234,16 +234,18 @@ sub enc_fdkaac {
     my ($dest, %m) = @_;
     my $cmd = <<END;
 $FDKAAC $FDKAACOPTS -S
---title        "$m{trackt}"
---artist       "$m{tracka}"
---album        "$m{albumt}"
---album-artist "$m{albuma}"
---genre        "$m{genre}"
---date         "$m{date}"
---composer     "$m{writer}"
---comment      "$m{comment}"
---track        "$m{tn}/$m{tt}"
---disk         "$m{dn}/$m{td}"
+--tag            too:"$m{encoder}"
+--tag            enc:"fdkaac $FDKAACOPTS"
+--title         "$m{trackt}"
+--artist        "$m{tracka}"
+--album         "$m{albumt}"
+--album-artist  "$m{albuma}"
+--genre         "$m{genre}"
+--date          "$m{date}"
+--composer      "$m{writer}"
+--comment       "$m{comment}"
+--track         "$m{tn}/$m{tt}"
+--disk          "$m{dn}/$m{td}"
 --tag           cpil:$m{comp}
 --tag-from-file covr:"$m{artwork}"
 - -o "$dest"
@@ -260,7 +262,7 @@ sub enc_lame {
 $LAME $LAMEOPTS
 --id3v2-only --ignore-tag-errors
 --tv TENC="$m{encoder}"
---tv TSSE="$LAMEOPTS"
+--tv TSSE="lame $LAMEOPTS"
 --tn $m{tn}/$m{tt}
 --tv TPOS=$m{dn}/$m{td}
 --tv TCMP=$m{comp}
