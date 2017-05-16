@@ -212,7 +212,8 @@ sub get_metadata {
     $m{tn}      = &meta_override($cuesheet, "TRACK",      $file, $track );
     $m{tt}      = &meta_override($cuesheet, "TOTAL_TRACKS",             );
 
-    $m{artwork} = file($cuepath, &meta_override($cuesheet, "ARTWORK", $file, $track ));
+    my $artwork = &meta_override($cuesheet, "ARTWORK",    $file, $track );
+    $m{artwork} = file($cuepath, $artwork) if (defined $artwork);
 
     my $comp    = &meta_override($cuesheet, "COMPILATION");
     $m{comp}    = 0;
