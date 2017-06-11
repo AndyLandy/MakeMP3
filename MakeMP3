@@ -233,6 +233,8 @@ sub get_metadata {
 ##########
 sub enc_fdkaac {
     my ($dest, %m) = @_;
+	my $ART = "";
+	   $ART = "--tag-from-file covr:\"$m{artwork}\"" if (defined $m{artwork});
     my $cmd = <<END;
 $FDKAAC $FDKAACOPTS -S
 --tag            enc:"$m{encoder} / fdkaac $FDKAACOPTS"
@@ -247,7 +249,7 @@ $FDKAAC $FDKAACOPTS -S
 --track         "$m{tn}/$m{tt}"
 --disk          "$m{dn}/$m{td}"
 --tag           cpil:$m{comp}
---tag-from-file covr:"$m{artwork}"
+$ART
 - -o "$dest"
 END
     ;
