@@ -89,7 +89,8 @@ foreach (@ARGV) {
 
     my @tracks;
     print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
-    print "$cuesheet->{TITLE}:\n";
+    print "$cuesheet->{TITLE}:" if defined $cuesheet->{TITLE};
+    print "\n";
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
             # Find out what track we're at
