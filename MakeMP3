@@ -287,6 +287,7 @@ sub parse_cuesheet {
         push @cuesheet, $_;
     }
     close ($fh);
+    @cuesheet = &fix_noncompliant(@cuesheet);
 
     my $data = {};
     my $file = -1;
@@ -352,6 +353,30 @@ sub sanitise_filename {
     $filename =~ s!\.+$!!;
     $filename =~ s!\s+$!!;
     return $filename;
+}
+
+##########
+sub fix_noncompliant {
+    my @in = @_;
+    my @out;
+    my $i = 0;
+    while ($i <= $#in) {
+        my @track;
+        push @track, $in[$i];
+        $i++;
+        while ($i <= $#in && $in[$i] !~ m/^\s*TRACK/ ) {
+            if ($in[$i] =~ m/^\s*INDEX 00/ && $in[$i+1] =~ m/^\s*FILE/) {
+                $in[$i] =~ s/INDEX 00/REM XGAP/;
+                unshift @track, ($in[$i], $in[$i+1]);
+                $i+=2;
+            } else {
+                push @track, $in[$i];
+                $i++;
+            }
+        }
+        push @out, @track;
+    }
+    return @out;
 }
 
 ##########
