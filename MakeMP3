@@ -305,7 +305,7 @@ sub parse_cuesheet {
             next;
         }
         if ($cuesheet[$i] =~ m/^\s*INDEX (\d+) (.*)$/) {
-			next if $track < 0; # Dodgy cue sheets may cause -1 indices.
+            next if $track < 0; # Dodgy cue sheets may cause -1 indices.
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
             next;
         }
@@ -346,8 +346,8 @@ sub sanitise_filename {
     $filename =~ s!:!-!g;
     $filename =~ s!\*!-!g;
     $filename =~ s!\?!!g;
-	$filename =~ s!\.+$!!;
-	$filename =~ s!\s+$!!;
+    $filename =~ s!\.+$!!;
+    $filename =~ s!\s+$!!;
     return $filename;
 }
 
