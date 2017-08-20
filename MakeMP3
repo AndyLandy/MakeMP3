@@ -204,8 +204,7 @@ sub get_metadata {
 
     my $metadata;
     $metadata  = " --id3v2-only --ignore-tag-errors";
-    $metadata .= " --tv TSSE=\"$LAMEOPTS\"";
-    $metadata .= " --tv TENC=\"Encoded using MakeMP3 $VER\"";
+    $metadata .= " --tv TENC=\"MakeMP3 $VER / lame $LAMEOPTS\"";
     $metadata .= " --tn $tn/$tt";
     $metadata .= " --tv TPOS=$dn/$td";
     $metadata .= " --tv TCMP=1" if defined ($comp) && $comp =~ /TRUE/i;
