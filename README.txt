@@ -1,4 +1,4 @@
-MakeMP3 is Copyright 2015-2016 by Andrew Paul Landells. 
+MakeMP3 is Copyright 2015-2017 by Andrew Paul Landells. 
 
 Introduction
 ============
@@ -19,7 +19,7 @@ further down for more details as to what metadata MakeMP3 supports.
 Usage
 =====
 
-    MakeMP3 [--ag] [--debug] [--dry-run] source_file ...
+    MakeMP3 [--ag] [--tg] [--debug] [--dry-run] source_file ...
 
 Basic usage is very simple: list your cue sheet(s) on the command line and
 MakeMP3 will process them all and place the resulting MP3 library in a new
@@ -69,14 +69,35 @@ A cue sheet will usually look something like this:
 TITLE "My First Album"
 PERFORMER "The Musical Artists"
 REM DATE 2000
-REM GENRE Pop
+REM GENRE "Pop"
 FILE "CDImage.wv" WAVE
-    TRACK 01 AUDIO
-        TITLE "The first track"
-        INDEX 01 00:00:00
-    TRACK 02 AUDIO
-        TITLE "The second track"
-        INDEX 01 05:23:47
+  TRACK 01 AUDIO
+    TITLE "The first track"
+    INDEX 00 00:00:00
+    INDEX 01 00:00:30
+  TRACK 02 AUDIO
+    TITLE "The second track"
+    INDEX 00 05:23:42
+    INDEX 01 05:23:47
+
+If you use EAC to rip track-by-track with pregaps, you will generate what's
+known as an EAC "non-compliant" cue sheet. As of MakeMP3 1.2.1, this is now a
+supported cue sheet format. Such a cue sheet will look something like this:
+
+TITLE "My First Album"
+PERFORMER "The Musical Artists"
+REM DATE 2000
+REM GENRE "Pop"
+FILE "Track 01.wv" WAVE
+  TRACK 01 AUDIO
+    TITLE "The first track"
+    INDEX 00 00:00:00
+    INDEX 01 00:00:30
+  TRACK 02 AUDIO
+    TITLE "The second track"
+    INDEX 00 05:23:42
+FILE "Track 02.wv" WAVE
+    INDEX 01 00:00:00
 
 MakeMP3 uses many of these cue-sheet directives to provide metadata for the
 output MP3 files. As the cue-sheet format is relatively limited, some standard
@@ -121,13 +142,18 @@ REM TOTALDISCS
     DISCNUMBER if unspecified
 
 REM COMPILATION TRUE
-    Sets the "Part of a compilation" flag
+    Sets the "Part of a compilation" flag. Strictly speaking, this should be
+    considered to be a "various artists" flag, rather than the strict
+    definition of a "compilation" album. You don't want to set it if there is
+    a defined album artist.
 
 REM SKIP TRUE
     Causes MakeMP3 to completely skip a track. Useful if you only want to
     encode a subset of the tracks. Particularly useful for albums with hidden
     tracks at the end, preceded by lots of silence. If this directive is put
-    at the top level of the cue sheet, the entire album is skipped.
+    at the top level of the cue sheet, the entire album is skipped. If you set
+    this flag at the top level, it can be overridden on a track-by-track basis
+    with the inverse, REM SKIP FALSE
 
 TRACK nn AUDIO
     The TRACK directive is mandatory for each track of a cue sheet; MakeMP3
@@ -162,22 +188,18 @@ Bugs, Known Issues and Planned Features
 MakeMP3 was originally written to fulfil a specific need, so it's currently
 fairly limited in many regards and isn't tremendously configurable.
 
+ *  ffmpeg, lame (and aacgain if using --ag or --tg) must be on your path
+    for MakeMP3 to work.
+
  *  lame and aacgain settings are hard-coded into MakeMP3. These should be
     user-customisable, ideally in a separate configuration file.
-
- *  ffmpeg, lame (and aacgain if using --ag) must be on your path for MakeMP3
-    to work.
 
  *  The encoder should be decoupled from MakeMP3 so that something other than
     lame can be used instead. Ideally, this will involve an abstract templating
     scheme much like EAC's so that any encoder can be easily supported.
 
- *  Track-gain support needs to be added.
-
-EAC's own 'non-compliant' cue-sheet format isn't supported: MakeMP3's internal
-representation makes this nontrivial to implement. If you really care that much
-about your pregaps, consider ripping your CDs as full-disc rips rather than
-track-by-tracks.
+ *  The metadata implementation is incomplete, for example ISRC tags are not 
+    created. It would also be nice to support pre-emphasis correctly.
 
 Revision History
 ================
@@ -216,7 +238,7 @@ with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 A copy of the license is included in the section entitled "GNU
 Free Documentation License".
 
-MakeMP3 is Copyright 2015-2016 Andrew Paul Landells
+MakeMP3 is Copyright 2015-2017 Andrew Paul Landells
 
 MakeMP3 is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
