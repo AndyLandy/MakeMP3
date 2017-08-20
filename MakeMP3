@@ -331,6 +331,7 @@ sub parse_cueline {
     $line =~ s/^[^0-9A-Za-z]*//; # remove all non alphanumerics from the start of the line.
     $line =~ s/^\s*//;
     $line =~ s/^REM //;
+    $line =~ s/`/'/g; # bugfix: backticks break shell compatibility, so we squash them.
     
     return ($1, $2) if ($line =~ m/^(.*?) \"(.*)\".*?$/);
     return ($1, $2) if ($line =~ m/^(\w+?) (.+)/);
