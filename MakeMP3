@@ -124,7 +124,9 @@ foreach (@ARGV) {
     }
     if ($AG or $TG) {
         my ($gainword, $gainopts)  =  $TG ? ('track', $TGOPTS) : ('album', $AGOPTS);
-        my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks)." 2>&1 >/dev/null";
+        my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks);
+        $gaincmd .= " 2>&1 >/dev/null" unless ($DEBUG);
+
         print "*** Applying $gainword gain\n";
         &sys_cmd ($gaincmd);
     }
