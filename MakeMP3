@@ -89,7 +89,8 @@ foreach (@ARGV) {
 
     my @tracks;
     print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
-    print "$cuesheet->{TITLE}:\n";
+    print "$cuesheet->{TITLE}:" if defined $cuesheet->{TITLE};
+    print "\n";
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
             # Find out what track we're at
@@ -124,7 +125,9 @@ foreach (@ARGV) {
     }
     if ($AG or $TG) {
         my ($gainword, $gainopts)  =  $TG ? ('track', $TGOPTS) : ('album', $AGOPTS);
-        my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks)." 2>&1 >/dev/null";
+        my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks);
+        $gaincmd .= " 2>&1 >/dev/null" unless ($DEBUG);
+
         print "*** Applying $gainword gain\n";
         &sys_cmd ($gaincmd);
     }
@@ -204,8 +207,7 @@ sub get_metadata {
 
     my $metadata;
     $metadata  = " --id3v2-only --ignore-tag-errors";
-    $metadata .= " --tv TSSE=\"$LAMEOPTS\"";
-    $metadata .= " --tv TENC=\"Encoded using MakeMP3 $VER\"";
+    $metadata .= " --tv TENC=\"MakeMP3 $VER / lame $LAMEOPTS\"";
     $metadata .= " --tn $tn/$tt";
     $metadata .= " --tv TPOS=$dn/$td";
     $metadata .= " --tv TCMP=1" if defined ($comp) && $comp =~ /TRUE/i;
@@ -305,6 +307,7 @@ sub parse_cuesheet {
             next;
         }
         if ($cuesheet[$i] =~ m/^\s*INDEX (\d+) (.*)$/) {
+            next if $track < 0; # Dodgy cue sheets may cause -1 indices.
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
             next;
         }
@@ -328,6 +331,7 @@ sub parse_cueline {
     $line =~ s/^[^0-9A-Za-z]*//; # remove all non alphanumerics from the start of the line.
     $line =~ s/^\s*//;
     $line =~ s/^REM //;
+    $line =~ s/`/'/g; # bugfix: backticks break shell compatibility, so we squash them.
     
     return ($1, $2) if ($line =~ m/^(.*?) \"(.*)\".*?$/);
     return ($1, $2) if ($line =~ m/^(\w+?) (.+)/);
@@ -345,8 +349,8 @@ sub sanitise_filename {
     $filename =~ s!:!-!g;
     $filename =~ s!\*!-!g;
     $filename =~ s!\?!!g;
-	$filename =~ s!\.+$!!;
-	$filename =~ s!\s+$!!;
+    $filename =~ s!\.+$!!;
+    $filename =~ s!\s+$!!;
     return $filename;
 }
 
