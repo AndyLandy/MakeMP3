@@ -32,6 +32,8 @@ my $FFMPEG = 'ffmpeg';
 my $FFMPEGOPTS = '-c:a pcm_s32le -f wav';
 my $LAME = 'lame';
 my $LAMEOPTS = '--preset extreme -k';
+my $FDKAAC = 'LD_LIBRARY_PATH=/opt/fdk-aac/lib /opt/fdkaac/bin/fdkaac';
+my $FDKAACOPTS = '-p 2 -m 1';
 my $GAIN = 'aacgain';
 my $AGOPTS = '-a -c';
 my $TGOPTS = '-r -c';
@@ -131,6 +133,7 @@ foreach (@ARGV) {
 
             # Build full command line.
             my $cmd = "$ff | $enc";
+            $cmd .= " 2>&1 >/dev/null" unless ($DEBUG);
             push (@tracks, "\"$dest\"");
 
             # Run the commands
@@ -229,10 +232,8 @@ sub get_metadata {
 ##########
 sub enc_fdkaac {
     my ($dest, %m) = @_;
-
-# -p 29 for HE-AAC v2
     my $cmd = <<END;
-fdkaac - -p 2 -m 1 -o "$dest"
+$FDKAAC $FDKAACOPTS -S
 --title        "$m{trackt}"
 --artist       "$m{tracka}"
 --album        "$m{albumt}"
@@ -245,7 +246,7 @@ fdkaac - -p 2 -m 1 -o "$dest"
 --disk         "$m{dn}/$m{td}"
 --tag           cpil:$m{comp}
 --tag-from-file covr:"$m{artwork}"
-2>/dev/null
+- -o "$dest"
 END
     ;
     $cmd =~ s/\R/ /g;
@@ -255,7 +256,6 @@ END
 ##########
 sub enc_lame {
     my ($dest, %m) = @_;
-
     my $cmd = <<END;
 $LAME $LAMEOPTS
 --id3v2-only --ignore-tag-errors
@@ -273,7 +273,7 @@ $LAME $LAMEOPTS
 --tc "$m{comment}"
 --tv TCOM="$m{writer}"
 --ti "$m{artwork}"
-- "$dest" 2>/dev/null
+- "$dest"
 END
     ;
     $cmd =~ s/\R/ /g;
