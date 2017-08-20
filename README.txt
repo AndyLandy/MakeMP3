@@ -203,6 +203,12 @@ fairly limited in many regards and isn't tremendously configurable.
 
 Revision History
 ================
+v1.2.1
+ *  Added support for EAC non-compliant cue sheets
+ *  Handful of minor bugfixes, including changes to how MakeMP3 writes its own
+    metadata. It now only uses the TENC field, leaving TSSE to be written by
+    LAME. For details about other bugfixes, please see the commit history.
+
 v1.2.0
  *  Added track-gain support
  *  Improved error-handling

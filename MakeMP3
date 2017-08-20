@@ -4,7 +4,7 @@
 # MakeMP3
 # 
 # A tool for creating MP3 files from lossless full-disc rips with cue sheets.
-# Copyright 2015-2016 Andrew Paul Landells.
+# Copyright 2015-2017 Andrew Paul Landells.
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ my $GAIN = 'aacgain';
 my $AGOPTS = '-a -c';
 my $TGOPTS = '-r -c';
 my $DESTDIR = 'makemp3';
-my $VER = '1.2.0';
+my $VER = '1.2.1';
 
 ##########
 # option variables with default value (false)
@@ -58,7 +58,7 @@ GetOptions (
 
 if ($VERSION) { print <<END;
 MakeMP3 $VER
-Copyright 2015-2016 Andrew Paul Landells
+Copyright 2015-2017 Andrew Paul Landells
 
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
