@@ -375,6 +375,13 @@ sub parse_cuesheet {
             next;
         }
 
+        if ($cuesheet[$i] =~ m/^\s*FLAGS (.*)/) {
+            foreach my $flag (split /\s+/,$1) {
+                $data->{FILE}->[$file]->{TRACKS}->[$track]->{FLAGS}->{$flag} = 'TRUE';
+            }
+            next;
+        }
+
         my ($k, $v) = &parse_cueline($cuesheet[$i]);
         next unless $k;
         $v =~ s/\"/\\\"/g; # If there are any quotes in there, escape them
