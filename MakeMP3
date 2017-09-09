@@ -376,8 +376,8 @@ sub parse_cuesheet {
         }
 
         my ($k, $v) = &parse_cueline($cuesheet[$i]);
-        $v =~ s/\"/\\\"/g; # If there are any quotes in there, escape them
         next unless $k;
+        $v =~ s/\"/\\\"/g; # If there are any quotes in there, escape them
         if ($file >= 0) {
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{$k} = $v;
         } else {
