@@ -30,6 +30,7 @@ use Path::Class;
 # Global configuration
 my $FFMPEG = 'ffmpeg';
 my $FFMPEGOPTS = '-c:a pcm_s32le -f wav';
+my $FFMPEGFILTER = '-af aemphasis=type=cd';
 my $LAME = 'lame';
 my $LAMEOPTS = '--preset extreme -k';
 #my $FDKAAC = 'LD_LIBRARY_PATH=/opt/fdk-aac/lib /opt/fdkaac/bin/fdkaac';
@@ -120,7 +121,9 @@ foreach (@ARGV) {
 
             # Build ffmpeg command line.
             my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
-            my $ff  = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $FFMPEGOPTS -";
+            my $pre = $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{FLAGS}->{PRE}; 
+            my $af  = $FFMPEGFILTER if (defined $pre && $pre =~ m/TRUE/);
+            my $ff  = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $af $FFMPEGOPTS -";
 
             # Build encoder command line.
             my $enc;
