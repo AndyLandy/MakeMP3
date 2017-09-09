@@ -261,6 +261,8 @@ END
 ##########
 sub enc_lame {
     my ($dest, %m) = @_;
+    my $ART = "";
+       $ART = "--ti \"$m{artwork}\"" if (defined $m{artwork});
     my $cmd = <<END;
 $LAME $LAMEOPTS
 --id3v2-only --ignore-tag-errors
@@ -276,7 +278,7 @@ $LAME $LAMEOPTS
 --ty "$m{date}"
 --tc "$m{comment}"
 --tv TCOM="$m{writer}"
---ti "$m{artwork}"
+$ART
 - "$dest"
 END
     ;
