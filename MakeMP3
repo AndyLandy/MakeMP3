@@ -112,7 +112,7 @@ foreach (@ARGV) {
 
             # Create filename for the output file
             my $ip = file( $cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
-            my $title = &sanitise_filename("$tn ".$cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{TITLE});
+            my $title = &sanitise_filename("$tn ".&meta_override($cuesheet, 'TITLE', $file, $track));
             my $dest = file ( $destpath."/".$title );
 
             # Build metadata hash
