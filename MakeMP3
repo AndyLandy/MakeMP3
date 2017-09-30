@@ -122,7 +122,8 @@ foreach (@ARGV) {
             # Build ffmpeg command line.
             my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
             my $pre = $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{FLAGS}->{PRE}; 
-            my $af  = $FFMPEGFILTER if (defined $pre && $pre =~ m/TRUE/);
+            my $af  = '';
+               $af  = $FFMPEGFILTER if (defined $pre && $pre =~ m/TRUE/);
             my $ff  = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $af $FFMPEGOPTS -";
 
             # Build encoder command line.
