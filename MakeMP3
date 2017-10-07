@@ -92,24 +92,17 @@ foreach (@ARGV) {
     print "\n";
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
-
             # Check to see if we're being asked to skip this track
             my $skip = &meta_override($cuesheet, "SKIP", $file, $track);
             print "... Track skipped!\n" and next if defined ($skip) && $skip =~ /TRUE/i;
 
-            # Build metadata hash
-            my %metadata = &get_metadata($cuesheet, $cuepath, $cuefile, $file, $track);
-
-            # Create destination directory structure for output file
-            my $destpath = &build_dest_path($cuesheet);
-            my $mkdir = "mkdir -p \"$destpath\"";
-
             # Create source and destination filenames
+            my $destpath = &build_dest_path($cuesheet);
             my $src  = file($cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
             my $dest = file($destpath."/".&output_filename($cuesheet, $file, $track));
 
-            # Build ffmpeg command line.
-            my $ff = &ffmpeg($cuesheet, $file, $track, $src);
+            # Build metadata hash
+            my %metadata = &get_metadata($cuesheet, $cuepath, $cuefile, $file, $track);
 
             # Build encoder command line.
             my $enc;
@@ -121,25 +114,20 @@ foreach (@ARGV) {
                 $enc = &enc_lame($dest, %metadata);
             }
 
+            # Build ffmpeg command line.
+            my $ff = &ffmpeg($cuesheet, $file, $track, $src);
+
             # Build full command line.
             my $cmd = "$ff | $enc";
-            $cmd .= " 2>&1 >/dev/null" unless ($DEBUG);
             push (@tracks, "\"$dest\"");
 
             # Run the commands
             print "... $dest\n";
-            &sys_cmd ($mkdir);
+            &sys_cmd ("mkdir -p \"$destpath\"");
             &sys_cmd ($cmd);
         }
     }
-    if ($AG or $TG) {
-        my ($gainword, $gainopts)  =  $TG ? ('track', $TGOPTS) : ('album', $AGOPTS);
-        my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks);
-        $gaincmd .= " 2>&1 >/dev/null" unless ($DEBUG);
-
-        print "*** Applying $gainword gain\n";
-        &sys_cmd ($gaincmd);
-    }
+    &gain(@tracks);
 }
 
 ##########
@@ -153,6 +141,7 @@ foreach (@ARGV) {
 sub sys_cmd {
     my ($cmd) = @_;
     print "\tExecuting command: $cmd\n" if $DEBUG;
+    $cmd .= " 2>&1 >/dev/null" unless ($DEBUG);
     system ($cmd) unless $DRY_RUN;
     if ($?) {
         # We got back a returncode that wasn't zero...
@@ -176,6 +165,19 @@ sub sys_cmd {
     }
     # Otherwise everything was fine!
     return 0;
+}
+
+##########
+# Run aacgain if we've been asked to.
+sub gain {
+    my @tracks = @_;
+    if ($AG or $TG) {
+        my ($gainword, $gainopts)  =  $TG ? ('track', $TGOPTS) : ('album', $AGOPTS);
+        my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks);
+        print "*** Applying $gainword gain\n";
+        &sys_cmd ($gaincmd);
+    }
+    return;
 }
 
 ##########
