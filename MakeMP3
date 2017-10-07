@@ -226,7 +226,7 @@ sub output_filename {
     $ofn .= $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
     $ofn .= sprintf("%.02d",&meta_override("TRACK", $cuesheet, $file, $track));
     $ofn .= ' ' unless $ofn =~ m/^$/;
-    $ofn .= &sanitise_filename(&meta_override("TRACK", $cuesheet, $file, $track));
+    $ofn .= &sanitise_filename(&meta_override("TITLE", $cuesheet, $file, $track));
     return $ofn;
 }
 
