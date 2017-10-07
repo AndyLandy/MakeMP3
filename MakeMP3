@@ -85,7 +85,6 @@ foreach (@ARGV) {
     # Read cuesheet and build data structure
     my $cuesheet = &parse_cuesheet($_);
     print "Failed to open $_\n" and next unless defined $cuesheet;
-    print Dumper $cuesheet if $DEBUG;
 
     my @tracks;
     print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
@@ -430,6 +429,7 @@ sub parse_cuesheet {
         }
     }
     $data->{TOTAL_TRACKS} = $ttracks;
+    print Dumper $data if $DEBUG;
     return $data;
 }
 
