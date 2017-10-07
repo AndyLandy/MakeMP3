@@ -83,7 +83,7 @@ foreach (@ARGV) {
     my ($cuepath, $cuefile) = &split_path($_);
 
     # Read cuesheet and build data structure
-    my $cuesheet = &parse_cuesheet(file($cuepath, $cuefile));
+    my $cuesheet = &parse_cuesheet($_);
     print "Failed to open $_\n" and next unless defined $cuesheet;
     print Dumper $cuesheet if $DEBUG;
 
