@@ -93,31 +93,24 @@ foreach (@ARGV) {
     print "\n";
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
-            # Create a correctly-formatted track number
-            my $tn = &track_num($cuesheet, $file, $track);
 
             # Check to see if we're being asked to skip this track
             my $skip = &meta_override($cuesheet, "SKIP", $file, $track);
-            print "... Track $tn skipped!\n" and next if defined ($skip) && $skip =~ /TRUE/i;
+            print "... Track skipped!\n" and next if defined ($skip) && $skip =~ /TRUE/i;
+
+            # Build metadata hash
+            my %metadata = &get_metadata($cuesheet, $cuepath, $cuefile, $file, $track);
 
             # Create destination directory structure for output file
             my $destpath = &build_dest_path($cuesheet);
             my $mkdir = "mkdir -p \"$destpath\"";
 
-            # Create filename for the output file
-            my $ip = file( $cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
-            my $title = &sanitise_filename("$tn ".&meta_override($cuesheet, 'TITLE', $file, $track));
-            my $dest = file ( $destpath."/".$title );
-
-            # Build metadata hash
-            my %metadata = &get_metadata($cuesheet, $cuepath, $cuefile, $file, $track);
+            # Create source and destination filenames
+            my $src  = file($cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
+            my $dest = file($destpath."/".&output_filename($cuesheet, $file, $track));
 
             # Build ffmpeg command line.
-            my $ffmpegtimes = &get_ffmpegtimes($cuesheet, $file, $track);
-            my $pre = $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{FLAGS}->{PRE}; 
-            my $af  = '';
-               $af  = $FFMPEGFILTER if (defined $pre && $pre =~ m/TRUE/);
-            my $ff  = "$FFMPEG -v warning -i \"$ip\" $ffmpegtimes $af $FFMPEGOPTS -";
+            my $ff = &ffmpeg($cuesheet, $file, $track, $src);
 
             # Build encoder command line.
             my $enc;
@@ -135,7 +128,7 @@ foreach (@ARGV) {
             push (@tracks, "\"$dest\"");
 
             # Run the commands
-            print "... $title\n";
+            print "... $dest\n";
             &sys_cmd ($mkdir);
             &sys_cmd ($cmd);
         }
@@ -187,6 +180,22 @@ sub sys_cmd {
 }
 
 ##########
+# Build the ffmpeg command line to read the input data
+sub ffmpeg {
+    my ($cuesheet, $file, $track, $src) = @_;
+    # Check for the pre-emphasis flag.
+    my $pre = $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{FLAGS}->{PRE}; 
+
+    my $ff  = "$FFMPEG ";
+       $ff .= "-v warning " unless ($DEBUG);
+       $ff .= "-i \"$src\" ";
+       $ff .= &get_ffmpegtimes($cuesheet, $file, $track).' ';
+       $ff .= "$FFMPEGFILTER " if (defined $pre && $pre =~ m/TRUE/);
+       $ff .= "$FFMPEGOPTS -";
+    return $ff;
+}
+
+##########
 # Build a destination path of the form BASEPATH/Artist/Album Title/
 sub build_dest_path {
     my ($cuesheet) = @_;
@@ -215,12 +224,14 @@ sub split_path {
 # For single-disc sets, this will be of the form 01, 02, 03 ...
 # For multi-disc sets, this will be of the form 1-01, 1-02 ... 2-01, 2-02 ...
 # If no track metadata exists, just do without a prefix.
-sub track_num {
+sub output_filename {
     my ($cuesheet, $file, $track) = @_;
-    my $tn = '';
-    $tn .= $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
-    $tn .= sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
-    return $tn;
+    my $ofn = '';
+    $ofn .= $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
+    $ofn .= sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
+    $ofn .= ' ' unless $ofn =~ m/^$/;
+    $ofn .= &sanitise_filename(&meta_override($cuesheet, 'TITLE', $file, $track));
+    return $ofn;
 }
 
 ##########
