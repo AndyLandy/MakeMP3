@@ -117,14 +117,12 @@ foreach (@ARGV) {
             # Build ffmpeg command line.
             my $ff = &ffmpeg($cuesheet, $file, $track, $src);
 
-            # Build full command line.
-            my $cmd = "$ff | $enc";
             push (@tracks, "\"$dest\"");
 
             # Run the commands
             print "... $dest\n";
             &sys_cmd ("mkdir -p \"$destpath\"");
-            &sys_cmd ($cmd);
+            &sys_cmd ("$ff | $enc");
         }
     }
     &gain(@tracks);
