@@ -101,7 +101,7 @@ foreach (@ARGV) {
             print "... Track $tn skipped!\n" and next if defined ($skip) && $skip =~ /TRUE/i;
 
             # Create destination directory structure for output file
-            my $destpath = file( $DESTDIR, &sanitise_filename($cuesheet->{PERFORMER}), &sanitise_filename($cuesheet->{TITLE}) );
+            my $destpath = &build_dest_path($cuesheet);
             my $mkdir = "mkdir -p \"$destpath\"";
 
             # Create filename for the output file
@@ -184,6 +184,15 @@ sub sys_cmd {
     }
     # Otherwise everything was fine!
     return 0;
+}
+
+##########
+# Build a destination path of the form BASEPATH/Artist/Album Title/
+sub build_dest_path {
+    my ($cuesheet) = @_;
+    my $p = &sanitise_filename($cuesheet->{PERFORMER});
+    my $t = &sanitise_filename($cuesheet->{TITLE});
+    return file($DESTDIR, $p, $t);
 }
 
 ##########
