@@ -93,7 +93,7 @@ foreach (@ARGV) {
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
             # Check to see if we're being asked to skip this track
-            print "... Track skipped!\n" and next if &meta_validate($cuesheet, "SKIP", $file, $track);
+            print "... Track skipped!\n" and next if &meta_validate("SKIP", $cuesheet, $file, $track);
 
             # Create source and destination filenames
             my $destpath = &build_dest_path($cuesheet);
@@ -101,7 +101,7 @@ foreach (@ARGV) {
             my $dest = file($destpath."/".&output_filename($cuesheet, $file, $track));
 
             # Build metadata hash
-            my %metadata = &get_metadata($cuesheet, $cuepath, $cuefile, $file, $track);
+            my %metadata = &get_metadata($cuepath, $cuefile, $cuesheet, $file, $track);
 
             # Build encoder command line.
             my $enc;
@@ -114,7 +114,7 @@ foreach (@ARGV) {
             }
 
             # Build ffmpeg command line.
-            my $ff = &ffmpeg($cuesheet, $file, $track, $src);
+            my $ff = &ffmpeg($src, $cuesheet, $file, $track);
 
             push (@tracks, "\"$dest\"");
 
@@ -180,13 +180,13 @@ sub gain {
 ##########
 # Build the ffmpeg command line to read the input data
 sub ffmpeg {
-    my ($cuesheet, $file, $track, $src) = @_;
+    my ($src, $cuesheet, $file, $track) = @_;
 
     my $ff  = "$FFMPEG ";
        $ff .= "-v warning " unless ($DEBUG);
        $ff .= "-i \"$src\" ";
        $ff .= &get_ffmpegtimes($cuesheet, $file, $track).' ';
-       $ff .= "$FFMPEGFILTER " if &meta_validate($cuesheet, "FLAG_PRE", $file, $track);
+       $ff .= "$FFMPEGFILTER " if &meta_validate("FLAG_PRE", $cuesheet, $file, $track);
        $ff .= "$FFMPEGOPTS -";
     return $ff;
 }
@@ -224,33 +224,33 @@ sub output_filename {
     my ($cuesheet, $file, $track) = @_;
     my $ofn = '';
     $ofn .= $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
-    $ofn .= sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
+    $ofn .= sprintf("%.02d",&meta_override("TRACK", $cuesheet, $file, $track));
     $ofn .= ' ' unless $ofn =~ m/^$/;
-    $ofn .= &sanitise_filename(&meta_override($cuesheet, 'TITLE', $file, $track));
+    $ofn .= &sanitise_filename(&meta_override("TRACK", $cuesheet, $file, $track));
     return $ofn;
 }
 
 ##########
 sub get_metadata {
-    my ($cuesheet, $cuepath, $cuefile, $file, $track) = @_;
+    my ($cuepath, $cuefile, $cuesheet, $file, $track) = @_;
     my %m;
 
     $m{encoder} = "MakeMP3 $VER";
-    $m{albumt}  = &meta_override($cuesheet, "TITLE"                     );
-    $m{albuma}  = &meta_override($cuesheet, "PERFORMER"                 );
-    $m{trackt}  = &meta_override($cuesheet, "TITLE",      $file, $track );
-    $m{tracka}  = &meta_override($cuesheet, "PERFORMER",  $file, $track );
-    $m{genre}   = &meta_override($cuesheet, "GENRE",      $file, $track );
-    $m{date}    = &meta_override($cuesheet, "DATE",       $file, $track );
-    $m{comment} = &meta_override($cuesheet, "COMMENT",    $file, $track );
-    $m{writer}  = &meta_override($cuesheet, "SONGWRITER", $file, $track );
-    $m{tn}      = &meta_override($cuesheet, "TRACK",      $file, $track );
-    $m{tt}      = &meta_override($cuesheet, "TOTAL_TRACKS",             );
+    $m{albumt}  = &meta_override("TITLE",        $cuesheet                );
+    $m{albuma}  = &meta_override("PERFORMER",    $cuesheet                );
+    $m{trackt}  = &meta_override("TITLE",        $cuesheet, $file, $track );
+    $m{tracka}  = &meta_override("PERFORMER",    $cuesheet, $file, $track );
+    $m{genre}   = &meta_override("GENRE",        $cuesheet, $file, $track );
+    $m{date}    = &meta_override("DATE",         $cuesheet, $file, $track );
+    $m{comment} = &meta_override("COMMENT",      $cuesheet, $file, $track );
+    $m{writer}  = &meta_override("SONGWRITER",   $cuesheet, $file, $track );
+    $m{tn}      = &meta_override("TRACK",        $cuesheet, $file, $track );
+    $m{tt}      = &meta_override("TOTAL_TRACKS", $cuesheet,               );
 
-    my $artwork = &meta_override($cuesheet, "ARTWORK",    $file, $track );
+    my $artwork = &meta_override("ARTWORK",      $cuesheet, $file, $track );
     $m{artwork} = file($cuepath, $artwork) if (defined $artwork);
 
-    $m{comp}    = &meta_validate($cuesheet, "COMPILATION");
+    $m{comp}    = &meta_validate("COMPILATION",  $cuesheet);
 
     $m{dn}      = 1; 
     $m{dn}      = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
@@ -329,7 +329,7 @@ sub meta_validate {
 
 ##########
 sub meta_override {
-    my ($cuesheet, $field, $file, $track) = @_;
+    my ($field, $cuesheet, $file, $track) = @_;
     return $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{$field} if (defined $file) and (defined $track) and (defined $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{$field});
     return $cuesheet->{$field} if defined $cuesheet->{$field};
     return undef;
@@ -350,7 +350,7 @@ sub convert_time {
 
 ##########
 sub get_time_index {
-    my ($cuesheet, $file, $track, $index) = @_;
+    my ($index, $cuesheet, $file, $track) = @_;
     if (defined $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]) {
         return &convert_time($cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$index]);
     }
@@ -360,9 +360,9 @@ sub get_time_index {
 ##########
 sub get_ffmpegtimes {
     my ($cuesheet, $file, $track) = @_;
-    my $this = &get_time_index($cuesheet, $file, $track,   1);
+    my $this = &get_time_index(1, $cuesheet, $file, $track);
     my $stop = &convert_time($cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{END});
-    my $next = &get_time_index($cuesheet, $file, $track+1, 1);
+    my $next = &get_time_index(1, $cuesheet, $file, $track+1);
     my $ss = '';
     my $t  = '';
     if (defined $this) {
