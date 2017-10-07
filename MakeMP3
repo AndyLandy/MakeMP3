@@ -93,8 +93,7 @@ foreach (@ARGV) {
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
             # Check to see if we're being asked to skip this track
-            my $skip = &meta_override($cuesheet, "SKIP", $file, $track);
-            print "... Track skipped!\n" and next if defined ($skip) && $skip =~ /TRUE/i;
+            print "... Track skipped!\n" and next if &meta_validate($cuesheet, "SKIP", $file, $track);
 
             # Create source and destination filenames
             my $destpath = &build_dest_path($cuesheet);
@@ -182,14 +181,12 @@ sub gain {
 # Build the ffmpeg command line to read the input data
 sub ffmpeg {
     my ($cuesheet, $file, $track, $src) = @_;
-    # Check for the pre-emphasis flag.
-    my $pre = $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{FLAGS}->{PRE}; 
 
     my $ff  = "$FFMPEG ";
        $ff .= "-v warning " unless ($DEBUG);
        $ff .= "-i \"$src\" ";
        $ff .= &get_ffmpegtimes($cuesheet, $file, $track).' ';
-       $ff .= "$FFMPEGFILTER " if (defined $pre && $pre =~ m/TRUE/);
+       $ff .= "$FFMPEGFILTER " if &meta_validate($cuesheet, "FLAG_PRE", $file, $track);
        $ff .= "$FFMPEGOPTS -";
     return $ff;
 }
@@ -253,9 +250,7 @@ sub get_metadata {
     my $artwork = &meta_override($cuesheet, "ARTWORK",    $file, $track );
     $m{artwork} = file($cuepath, $artwork) if (defined $artwork);
 
-    my $comp    = &meta_override($cuesheet, "COMPILATION");
-    $m{comp}    = 0;
-    $m{comp}    = 1 if (defined $comp && $comp =~ m/TRUE/);
+    $m{comp}    = &meta_validate($cuesheet, "COMPILATION");
 
     $m{dn}      = 1; 
     $m{dn}      = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
@@ -321,6 +316,15 @@ END
     ;
     $cmd =~ s/\n/ /g;
     return $cmd;
+}
+
+##########
+# Wrapper to meta_override. Designed to test flags rather than return values.
+# Has the same prototype as meta_override, i.e.:
+# ($cuesheet, $field, $file, $track) = @_;
+sub meta_validate {
+    return 1 if defined (&meta_override(@_)) && &meta_override(@_) =~ /TRUE/i;
+    return 0;
 }
 
 ##########
@@ -414,7 +418,7 @@ sub parse_cuesheet {
 
         if ($cuesheet[$i] =~ m/^\s*FLAGS (.*)/) {
             foreach my $flag (split /\s+/,$1) {
-                $data->{FILE}->[$file]->{TRACKS}->[$track]->{FLAGS}->{$flag} = 'TRUE';
+                $data->{FILE}->[$file]->{TRACKS}->[$track]->{"FLAG_$flag"} = 'TRUE';
             }
             next;
         }
