@@ -77,16 +77,10 @@ Usage: $0 [--ag] [--tg] [--debug] [--dry-run] source_file ...
 END
 ; exit 0 }
 
+
 foreach (@ARGV) {
     # Cache the path to the cuesheet, since everything else is relative to it.
-    my ($cuepath, $cuefile);
-    if (m/^(.*)[\\\/](.*?)$/) {
-        ($cuepath, $cuefile) = ($1, $2);
-    } else {
-        $cuepath = "./";
-        $cuefile = $_;
-    }
-    print "Path: $cuepath\nFile: $cuefile\n\n" if $DEBUG;
+    my ($cuepath, $cuefile) = &split_path($_);
 
     # Read cuesheet and build data structure
     my $cuesheet = &parse_cuesheet(file($cuepath, $cuefile));
@@ -99,9 +93,8 @@ foreach (@ARGV) {
     print "\n";
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
-            # Find out what track we're at
-            my $dn = &disc_num($cuesheet);
-            my $tn = $dn.sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
+            # Create a correctly-formatted track number
+            my $tn = &track_num($cuesheet, $file, $track);
 
             # Check to see if we're being asked to skip this track
             my $skip = &meta_override($cuesheet, "SKIP", $file, $track);
@@ -194,10 +187,31 @@ sub sys_cmd {
 }
 
 ##########
-sub disc_num {
-    my ($cuesheet) = @_;
-    return $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
-    return '';
+# Take the path to the cuesheet and split it into path and file.
+# If it's in the current directory, use ./ as the path.
+sub split_path {
+    my ($cuepath, $cuefile);
+    if (m/^(.*)[\\\/](.*?)$/) {
+        ($cuepath, $cuefile) = ($1, $2);
+    } else {
+        $cuepath = "./";
+        $cuefile = $_;
+    }
+    print "Path: $cuepath\nFile: $cuefile\n\n" if $DEBUG;
+    return ($cuepath, $cuefile);
+}
+
+##########
+# Create the human-readable track number for filenames.
+# For single-disc sets, this will be of the form 01, 02, 03 ...
+# For multi-disc sets, this will be of the form 1-01, 1-02 ... 2-01, 2-02 ...
+# If no track metadata exists, just do without a prefix.
+sub track_num {
+    my ($cuesheet, $file, $track) = @_;
+    my $tn = '';
+    $tn .= $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
+    $tn .= sprintf("%.02d",&meta_override($cuesheet, 'TRACK', $file, $track));
+    return $tn;
 }
 
 ##########
