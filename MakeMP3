@@ -25,21 +25,8 @@ use warnings;
 use Getopt::Long;
 use Data::Dumper;
 use Path::Class;
+use JSON;
 
-##########
-# Global configuration
-my $FFMPEG = 'ffmpeg';
-my $FFMPEGOPTS = '-c:a pcm_s32le -f wav';
-my $FFMPEGFILTER = '-af aemphasis=type=cd';
-my $LAME = 'lame';
-my $LAMEOPTS = '--preset extreme -k';
-#my $FDKAAC = 'LD_LIBRARY_PATH=/opt/fdk-aac/lib /opt/fdkaac/bin/fdkaac';
-my $FDKAAC = 'fdkaac';
-my $FDKAACOPTS = '-p 2 -m 1 -w 22050';
-my $GAIN = 'aacgain';
-my $AGOPTS = '-a -c';
-my $TGOPTS = '-r -c';
-my $DESTDIR = 'makemp3';
 my $VER = '1.3.0';
 
 ##########
@@ -50,7 +37,6 @@ my $DEBUG = '';
 my $DRY_RUN = ''; 
 my $HELP = '';
 my $VERSION = '';
-my $AAC = '';
 
 GetOptions (
     'debug'   => \$DEBUG,
@@ -59,8 +45,10 @@ GetOptions (
     'tg'      => \$TG,
     'help'    => \$HELP,
     'version' => \$VERSION,
-    'aac'     => \$AAC,
 );
+
+my $CONFIG = decode_json(do { local $/; <DATA> });
+print Dumper $CONFIG if $DEBUG;
 
 if ($VERSION) { print <<END;
 MakeMP3 $VER
@@ -79,49 +67,28 @@ END
 
 
 foreach (@ARGV) {
-    # Cache the path to the cuesheet, since everything else is relative to it.
-    my ($cuepath, $cuefile) = &split_path($_);
-
-    # Read cuesheet and build data structure
     my $cuesheet = &parse_cuesheet($_);
     print "Failed to open $_\n" and next unless defined $cuesheet;
 
-    my @tracks;
     print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
     print "$cuesheet->{TITLE}:" if defined $cuesheet->{TITLE};
     print "\n";
+
+    my @tracks;
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
-            # Check to see if we're being asked to skip this track
             print "... Track skipped!\n" and next if &meta_validate("SKIP", $cuesheet, $file, $track);
 
-            # Create source and destination filenames
             my $destpath = &build_dest_path($cuesheet);
-            my $src  = file($cuepath, $cuesheet->{FILE}->[$file]->{FILE}); # Input path = path + input file.
             my $dest = file($destpath."/".&output_filename($cuesheet, $file, $track));
 
-            # Build metadata hash
-            my %metadata = &get_metadata($cuepath, $cuefile, $cuesheet, $file, $track);
+            my $ff  = &ffmpeg($cuesheet, $file, $track);
+            my $enc = &encoder($cuesheet, $file, $track);
 
-            # Build encoder command line.
-            my $enc;
-            if ($AAC) {
-                $dest .= '.m4a';
-                $enc = &enc_fdkaac($dest, %metadata);
-            } else {
-                $dest .= '.mp3';
-                $enc = &enc_lame($dest, %metadata);
-            }
-
-            # Build ffmpeg command line.
-            my $ff = &ffmpeg($src, $cuesheet, $file, $track);
-
-            push (@tracks, "\"$dest\"");
-
-            # Run the commands
             print "... $dest\n";
             &sys_cmd ("mkdir -p \"$destpath\"");
             &sys_cmd ("$ff | $enc");
+            push (@tracks, "\"$dest\"");
         }
     }
     &gain(@tracks);
@@ -138,7 +105,7 @@ foreach (@ARGV) {
 sub sys_cmd {
     my ($cmd) = @_;
     print "\tExecuting command: $cmd\n" if $DEBUG;
-    $cmd .= " 2>&1 >/dev/null" unless ($DEBUG);
+    #$cmd .= " 2>&1 >/dev/null" unless $DEBUG;
     system ($cmd) unless $DRY_RUN;
     if ($?) {
         # We got back a returncode that wasn't zero...
@@ -169,8 +136,10 @@ sub sys_cmd {
 sub gain {
     my @tracks = @_;
     if ($AG or $TG) {
-        my ($gainword, $gainopts)  =  $TG ? ('track', $TGOPTS) : ('album', $AGOPTS);
-        my $gaincmd = "$GAIN -q $gainopts ".join (' ',@tracks);
+        my ($gainword, $gainopts) = $TG ? ('track', $CONFIG->{ATGOPTS}) : ('album', $CONFIG->{AAGOPTS});
+        $gainopts .= " $CONFIG->{AGQUIET}" unless $DEBUG;
+        my $gaincmd = "$CONFIG->{AACGAIN} $gainopts ".join (' ',@tracks);
+
         print "*** Applying $gainword gain\n";
         &sys_cmd ($gaincmd);
     }
@@ -178,16 +147,34 @@ sub gain {
 }
 
 ##########
+# Build the encoder command line to create the output file with metadata
+sub encoder {
+    my ($cuesheet, $file, $track) = @_;
+    my $enc  = "$CONFIG->{ENCODER} $CONFIG->{ENCOPTS} ";
+       $enc .= "$CONFIG->{ENQUIET} " unless $DEBUG;
+
+    foreach my $line (@{$CONFIG->{METADATA}}){
+        $line =~ s/%%\?(\w+)/&meta_validate($1, $cuesheet)/ge;
+        $line =~ s/%%(\w+)/&meta_override($1, $cuesheet)/ge;
+        $line =~ s/%\?(\w+)/&meta_validate($1, $cuesheet, $file, $track)/ge;
+        $line =~ s/%(\w+)/&meta_override($1, $cuesheet, $file, $track)/ge;
+        $enc .= "$line ";
+    }
+    $enc .= '"'.file(&build_dest_path($cuesheet), &output_filename($cuesheet, $file, $track)).'"';
+    return $enc;
+}
+
+##########
 # Build the ffmpeg command line to read the input data
 sub ffmpeg {
-    my ($src, $cuesheet, $file, $track) = @_;
-
-    my $ff  = "$FFMPEG ";
-       $ff .= "-v warning " unless ($DEBUG);
+    my ($cuesheet, $file, $track) = @_;
+    my $src = file($cuesheet->{_CUEPATH}, $cuesheet->{FILE}->[$file]->{FILE});
+    my $ff  = "$CONFIG->{FFMPEG} ";
+       $ff .= "$CONFIG->{FFQUIET} " unless $DEBUG;
        $ff .= "-i \"$src\" ";
        $ff .= &get_ffmpegtimes($cuesheet, $file, $track).' ';
-       $ff .= "$FFMPEGFILTER " if &meta_validate("FLAG_PRE", $cuesheet, $file, $track);
-       $ff .= "$FFMPEGOPTS -";
+       $ff .= "$CONFIG->{FILTER} " if &meta_validate("_FLAGS_PRE", $cuesheet, $file, $track);
+       $ff .= "$CONFIG->{FFOPTS} -";
     return $ff;
 }
 
@@ -197,7 +184,7 @@ sub build_dest_path {
     my ($cuesheet) = @_;
     my $p = &sanitise_filename($cuesheet->{PERFORMER});
     my $t = &sanitise_filename($cuesheet->{TITLE});
-    return file($DESTDIR, $p, $t);
+    return file($CONFIG->{DESTDIR}, $p, $t);
 }
 
 ##########
@@ -227,95 +214,8 @@ sub output_filename {
     $ofn .= sprintf("%.02d",&meta_override("TRACK", $cuesheet, $file, $track));
     $ofn .= ' ' unless $ofn =~ m/^$/;
     $ofn .= &sanitise_filename(&meta_override("TITLE", $cuesheet, $file, $track));
+    $ofn .= $CONFIG->{FILEEXT};
     return $ofn;
-}
-
-##########
-sub get_metadata {
-    my ($cuepath, $cuefile, $cuesheet, $file, $track) = @_;
-    my %m;
-
-    $m{encoder} = "MakeMP3 $VER";
-    $m{albumt}  = &meta_override("TITLE",        $cuesheet                );
-    $m{albuma}  = &meta_override("PERFORMER",    $cuesheet                );
-    $m{trackt}  = &meta_override("TITLE",        $cuesheet, $file, $track );
-    $m{tracka}  = &meta_override("PERFORMER",    $cuesheet, $file, $track );
-    $m{genre}   = &meta_override("GENRE",        $cuesheet, $file, $track );
-    $m{date}    = &meta_override("DATE",         $cuesheet, $file, $track );
-    $m{comment} = &meta_override("COMMENT",      $cuesheet, $file, $track );
-    $m{writer}  = &meta_override("SONGWRITER",   $cuesheet, $file, $track );
-    $m{tn}      = &meta_override("TRACK",        $cuesheet, $file, $track );
-    $m{tt}      = &meta_override("TOTAL_TRACKS", $cuesheet,               );
-
-    my $artwork = &meta_override("ARTWORK",      $cuesheet, $file, $track );
-    $m{artwork} = file($cuepath, $artwork) if (defined $artwork);
-
-    $m{comp}    = &meta_validate("COMPILATION",  $cuesheet);
-
-    $m{dn}      = 1; 
-    $m{dn}      = $cuesheet->{DISCNUMBER} if defined $cuesheet->{DISCNUMBER};
-    $m{td}      = $m{dn};
-    $m{td}      = $cuesheet->{TOTALDISCS} if defined $cuesheet->{TOTALDISCS};
-
-    # Any missing metadata we set as the empty string.
-    foreach my $k (keys %m) { $m{$k} = "" unless defined $m{$k}; }
-
-    return %m;
-}
-
-##########
-sub enc_fdkaac {
-    my ($dest, %m) = @_;
-    my $ART = "";
-       $ART = "--tag-from-file covr:\"$m{artwork}\"" if (defined $m{artwork});
-    my $cmd = <<END;
-$FDKAAC $FDKAACOPTS -S
---tag            enc:"$m{encoder} / fdkaac $FDKAACOPTS"
---title         "$m{trackt}"
---artist        "$m{tracka}"
---album         "$m{albumt}"
---album-artist  "$m{albuma}"
---genre         "$m{genre}"
---date          "$m{date}"
---composer      "$m{writer}"
---comment       "$m{comment}"
---track         "$m{tn}/$m{tt}"
---disk          "$m{dn}/$m{td}"
---tag           cpil:$m{comp}
-$ART
-- -o "$dest"
-END
-    ;
-    $cmd =~ s/\n/ /g;
-    return $cmd;
-}
-
-##########
-sub enc_lame {
-    my ($dest, %m) = @_;
-    my $ART = "";
-       $ART = "--ti \"$m{artwork}\"" if (defined $m{artwork});
-    my $cmd = <<END;
-$LAME $LAMEOPTS
---id3v2-only --ignore-tag-errors
---tv TENC="$m{encoder} / lame $LAMEOPTS"
---tn $m{tn}/$m{tt}
---tv TPOS=$m{dn}/$m{td}
---tv TCMP=$m{comp}
---tl "$m{albumt}"
---tv TPE2="$m{albuma}"
---tt "$m{trackt}"
---ta "$m{tracka}"
---tg "$m{genre}"
---ty "$m{date}"
---tc "$m{comment}"
---tv TCOM="$m{writer}"
-$ART
-- "$dest"
-END
-    ;
-    $cmd =~ s/\n/ /g;
-    return $cmd;
 }
 
 ##########
@@ -323,7 +223,7 @@ END
 # Has the same prototype as meta_override, i.e.:
 # ($cuesheet, $field, $file, $track) = @_;
 sub meta_validate {
-    return 1 if defined (&meta_override(@_)) && &meta_override(@_) =~ /TRUE/i;
+    return 1 if &meta_override(@_) =~ /TRUE/i;
     return 0;
 }
 
@@ -332,7 +232,7 @@ sub meta_override {
     my ($field, $cuesheet, $file, $track) = @_;
     return $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{$field} if (defined $file) and (defined $track) and (defined $cuesheet->{FILE}->[$file]->{TRACKS}->[$track]->{$field});
     return $cuesheet->{$field} if defined $cuesheet->{$field};
-    return undef;
+    return '';
 }
 
 ##########
@@ -381,6 +281,8 @@ sub get_ffmpegtimes {
 ##########
 sub parse_cuesheet {
     my ($cuesheet) = @_;
+    # Cache the path to the cuesheet, since all the source files are relative to it.
+    my ($cuepath, $cuefile) = &split_path($cuesheet);
     open(my $fh, "<".$cuesheet) or return undef;
     my @cuesheet;
     while (<$fh>) {
@@ -415,10 +317,9 @@ sub parse_cuesheet {
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
             next;
         }
-
         if ($cuesheet[$i] =~ m/^\s*FLAGS (.*)/) {
             foreach my $flag (split /\s+/,$1) {
-                $data->{FILE}->[$file]->{TRACKS}->[$track]->{"FLAG_$flag"} = 'TRUE';
+                $data->{FILE}->[$file]->{TRACKS}->[$track]->{"_FLAGS_$flag"} = 'TRUE';
             }
             next;
         }
@@ -432,7 +333,18 @@ sub parse_cuesheet {
             $data->{$k} = $v;
         }
     }
-    $data->{TOTAL_TRACKS} = $ttracks;
+
+    # Define DISCNUMBER and TOTALDISCS if they're missing from the cue sheet.
+    $data->{DISCNUMBER} = 1 unless defined $data->{DISCNUMBER};
+    $data->{TOTALDISCS} = $data->{DISCNUMBER} unless defined $data->{TOTALDISCS};
+
+    # Add extra data to the cuesheet so the metadata engine can recycle it.
+    $data->{_TOTALTRACKS} = $ttracks;
+    $data->{_VERSION} = "MakeMP3 $VER";
+    $data->{_CUEPATH} = $cuepath;
+    $data->{_ENCOPTS} = $CONFIG->{ENCOPTS};
+    $data->{_ENCODER} = $CONFIG->{ENCODER};
+    $data->{_ENCODER} =~ s!^.*/!!;
     print Dumper $data if $DEBUG;
     return $data;
 }
@@ -491,5 +403,38 @@ sub fix_noncompliant {
 }
 
 ##########
-
 1;
+
+__DATA__
+{
+    "VERSION"  : "1",
+    "DESTDIR"  : "makemp3",
+    "FFMPEG"   : "ffmpeg",
+    "FFQUIET"  : "-v warning",
+    "FFOPTS"   : "-map 0:a -c:a pcm_s32le -f wav",
+    "FILTER"   : "-af aemphasis=type=cd",
+    "AACGAIN"  : "aacgain",
+    "AGQUIET"  : "-q",
+    "AAGOPTS"  : "-a -c",
+    "ATGOPTS"  : "-r -c",
+    "ENCODER"  : "lame",
+    "ENQUIET"  : "--quiet",
+    "ENCOPTS"  : "--preset extreme -k",
+    "FILEEXT"  : ".mp3",
+    "METADATA" : [
+        "--tv TENC=\"%_VERSION / %_ENCOPTS\"",
+        "--tn %TRACK/%_TOTALTRACKS",
+        "--tv TPOS=%DISCNUMBER/%TOTALDISCS",
+        "--tv TCMP=%?COMPILATION",
+        "--tl \"%%TITLE\"",
+        "--tv TPE2=\"%%PERFORMER\"",
+        "--tt \"%TITLE\"",
+        "--ta \"%PERFORMER\"",
+        "--tg \"%GENRE\"",
+        "--ty \"%DATE\"",
+        "--tc \"%COMMENT\"",
+        "--tv TCOM=\"%SONGWRITER\"",
+        "--ti \"%_CUEPATH/%ARTWORK\"",
+        "--id3v2-only --ignore-tag-errors - "
+    ]
+}
