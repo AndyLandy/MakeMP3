@@ -25,6 +25,7 @@ use warnings;
 use Getopt::Long;
 use Data::Dumper;
 use Path::Class;
+use Hash::Merge qw(merge);
 use JSON;
 
 my $VER = '1.3.0';
@@ -37,6 +38,7 @@ my $DEBUG = '';
 my $DRY_RUN = ''; 
 my $HELP = '';
 my $VERSION = '';
+my $CFF = '';
 
 GetOptions (
     'debug'   => \$DEBUG,
@@ -45,9 +47,18 @@ GetOptions (
     'tg'      => \$TG,
     'help'    => \$HELP,
     'version' => \$VERSION,
+    'conf=s'  => \$CFF,
 );
 
 my $CONFIG = decode_json(do { local $/; <DATA> });
+
+if ($CFF ne '') {
+    open (my $CFH, '<'.$CFF) or die "Failed to open configuration file $CFF\n";
+    my $newconf = decode_json(do { local $/; <$CFH> });
+    close $CFH;
+    $CONFIG = {%$CONFIG, %$newconf};
+}
+
 print Dumper $CONFIG if $DEBUG;
 
 if ($VERSION) { print <<END;
@@ -105,7 +116,7 @@ foreach (@ARGV) {
 sub sys_cmd {
     my ($cmd) = @_;
     print "\tExecuting command: $cmd\n" if $DEBUG;
-    #$cmd .= " 2>&1 >/dev/null" unless $DEBUG;
+    $cmd .= " 2>&1 >/dev/null" unless $DEBUG;
     system ($cmd) unless $DRY_RUN;
     if ($?) {
         # We got back a returncode that wasn't zero...
@@ -221,7 +232,7 @@ sub output_filename {
 ##########
 # Wrapper to meta_override. Designed to test flags rather than return values.
 # Has the same prototype as meta_override, i.e.:
-# ($cuesheet, $field, $file, $track) = @_;
+# ($field, $cuesheet, $file, $track) = @_;
 sub meta_validate {
     return 1 if &meta_override(@_) =~ /TRUE/i;
     return 0;
