@@ -163,7 +163,8 @@ sub encoder {
     my $enc  = "$CONFIG->{ENCODER} $CONFIG->{ENCOPTS} ";
        $enc .= "$CONFIG->{ENQUIET} " unless $DEBUG;
 
-    foreach my $line (@{$CONFIG->{METADATA}}){
+    my @trackconfig = @{$CONFIG->{METADATA}};
+    foreach my $line (@trackconfig){
         $line =~ s/%%\?(\w+)/&meta_validate($1, $cuesheet)/ge;
         $line =~ s/%%(\w+)/&meta_override($1, $cuesheet)/ge;
         $line =~ s/%\?(\w+)/&meta_validate($1, $cuesheet, $file, $track)/ge;
