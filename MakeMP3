@@ -378,6 +378,8 @@ sub sanitise_filename {
     my ($filename) = @_;
     $filename = "Unknown" unless defined $filename; # If an artist or title is missing, say it's unknown.
     $filename =~ s/[^[:ascii:]]/-/g; # Replace all non-ASCII characters
+    $filename =~ s!<!_!g;
+    $filename =~ s!>!_!g;
     $filename =~ s!/!-!g;
     $filename =~ s!\\!-!g;
     $filename =~ s!\"!-!g;
