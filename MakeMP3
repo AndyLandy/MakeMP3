@@ -243,9 +243,10 @@ sub split_path {
 # If no track metadata exists, just do without a prefix.
 sub output_filename {
     my ($cuesheet, $file, $track) = @_;
+    my $tn = &meta_override("TRACK", $cuesheet, $file, $track);
     my $ofn = '';
     $ofn .= $cuesheet->{DISCNUMBER}."-" if (defined $cuesheet->{DISCNUMBER} && defined $cuesheet->{TOTALDISCS} && $cuesheet->{TOTALDISCS} > 1);
-    $ofn .= sprintf("%.02d",&meta_override("TRACK", $cuesheet, $file, $track));
+    $ofn .= sprintf("%.02d",$tn) if (defined $tn) && ($tn =~ m/^\d+$/);
     $ofn .= ' ' unless $ofn =~ m/^$/;
     $ofn .= &sanitise_filename(&meta_override("TITLE", $cuesheet, $file, $track));
     $ofn .= $CONFIG->{FILEEXT};
@@ -350,10 +351,12 @@ sub parse_cuesheet {
             $track = -1;
             next;
         }
-        if ($cuesheet[$i] =~ m/^\s*TRACK (\d+) AUDIO/) {
+        if ($cuesheet[$i] =~ m/^\s*TRACK/) {
             $track++;
-            $data->{FILE}->[$file]->{TRACKS}->[$track]->{TRACK} = $1;
-            $ttracks = $1 if ($1 > $ttracks);
+            if ($cuesheet[$i] =~ m/(\d+) AUDIO/) {
+                $data->{FILE}->[$file]->{TRACKS}->[$track]->{TRACK} = $1;
+                $ttracks = $1 if ($1 > $ttracks);
+            }
             next;
         }
         if ($cuesheet[$i] =~ m/^\s*INDEX (\d+) (.*)$/) {
