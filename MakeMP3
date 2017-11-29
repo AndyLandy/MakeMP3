@@ -31,21 +31,23 @@ my $VER = '1.3.0';
 
 ##########
 # option variables with default value (false)
-my $AG = '';
-my $TG = '';
-my $DEBUG = ''; 
-my $DRY_RUN = ''; 
 my $HELP = '';
 my $VERSION = '';
+my $DRY_RUN = ''; 
+my $DEBUG = ''; 
+my $QUIET = '';
+my $AG = '';
+my $TG = '';
 my $CFF = '';
 
 GetOptions (
-    'debug'   => \$DEBUG,
-    'dry-run' => \$DRY_RUN,
-    'ag'      => \$AG,
-    'tg'      => \$TG,
     'help'    => \$HELP,
     'version' => \$VERSION,
+    'dry-run' => \$DRY_RUN,
+    'debug'   => \$DEBUG,
+    'quiet'   => \$QUIET,
+    'ag'      => \$AG,
+    'tg'      => \$TG,
     'conf=s'  => \$CFF,
 );
 
@@ -80,14 +82,16 @@ foreach (@ARGV) {
     my $cuesheet = &parse_cuesheet($_);
     print "Failed to open $_\n" and next unless defined $cuesheet;
 
-    print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
-    print "$cuesheet->{TITLE}:" if defined $cuesheet->{TITLE};
-    print "\n";
+    unless ($QUIET) {
+        print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
+        print "$cuesheet->{TITLE}:" if defined $cuesheet->{TITLE};
+        print "\n";
+    }
 
     my @tracks;
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
-            print "... Track skipped!\n" and next if &meta_validate("SKIP", $cuesheet, $file, $track);
+            print "... Track skipped!\n" and next if (&meta_validate("SKIP", $cuesheet, $file, $track) && !$QUIET);
 
             my $destpath = &build_dest_path($cuesheet);
             my $dest = file($destpath."/".&output_filename($cuesheet, $file, $track));
@@ -95,7 +99,7 @@ foreach (@ARGV) {
             my $ff  = &ffmpeg($cuesheet, $file, $track);
             my $enc = &encoder($cuesheet, $file, $track);
 
-            print "... $dest\n";
+            print "... $dest\n" unless $QUIET;
             &sys_cmd ("mkdir -p \"$destpath\"");
             &sys_cmd ("$ff | $enc");
             push (@tracks, "\"$dest\"");
