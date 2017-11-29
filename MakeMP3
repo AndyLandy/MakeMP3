@@ -157,6 +157,17 @@ sub gain {
 }
 
 ##########
+# Work out which metadata function/variation to call, based on a prefix, then return the metadata.
+sub metameta {
+    my ($prefix, $field, $cuesheet, $file, $track) = @_;
+    return &meta_validate($field, $cuesheet)                if ($prefix =~ /%%\?/);
+    return &meta_override($field, $cuesheet)                if ($prefix =~ /%%/);
+    return &meta_validate($field, $cuesheet, $file, $track) if ($prefix =~ /%\?/);
+    return &meta_override($field, $cuesheet, $file, $track) if ($prefix =~ /%/);
+    return undef;
+}
+
+##########
 # Build the encoder command line to create the output file with metadata
 sub encoder {
     my ($cuesheet, $file, $track) = @_;
@@ -164,11 +175,13 @@ sub encoder {
        $enc .= "$CONFIG->{ENQUIET} " unless $DEBUG;
 
     my @trackconfig = @{$CONFIG->{METADATA}};
-    foreach my $line (@trackconfig){
-        $line =~ s/%%\?(\w+)/&meta_validate($1, $cuesheet)/ge;
-        $line =~ s/%%(\w+)/&meta_override($1, $cuesheet)/ge;
-        $line =~ s/%\?(\w+)/&meta_validate($1, $cuesheet, $file, $track)/ge;
-        $line =~ s/%(\w+)/&meta_override($1, $cuesheet, $file, $track)/ge;
+    LOOP: foreach my $line (@trackconfig) {
+        while ($line =~ m/(%%?\??)(\w+)/g) {
+            my ($prefix, $field) = ($1, $2);
+            my $metadata = &metameta($prefix, $field, $cuesheet, $file, $track);
+            next LOOP unless (defined $metadata && $metadata ne '');
+            $line =~ s/\Q$prefix$field\E/$metadata/;
+        }
         $enc .= "$line ";
     }
     $enc .= '"'.file(&build_dest_path($cuesheet), &output_filename($cuesheet, $file, $track)).'"';
