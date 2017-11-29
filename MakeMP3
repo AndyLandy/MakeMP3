@@ -36,6 +36,7 @@ my $VERSION = '';
 my $DRY_RUN = ''; 
 my $DEBUG = ''; 
 my $QUIET = '';
+my $FORCE = '';
 my $AG = '';
 my $TG = '';
 my $CFF = '';
@@ -46,6 +47,7 @@ GetOptions (
     'dry-run' => \$DRY_RUN,
     'debug'   => \$DEBUG,
     'quiet'   => \$QUIET,
+    'force'   => \$FORCE,
     'ag'      => \$AG,
     'tg'      => \$TG,
     'conf=s'  => \$CFF,
@@ -78,8 +80,9 @@ END
 ; exit 0 }
 
 
-foreach (@ARGV) {
-    my $cuesheet = &parse_cuesheet($_);
+foreach my $cuefilename (@ARGV) {
+    my $cuesheet = &parse_cuesheet($cuefilename);
+    my $cuetime = &get_file_time($cuefilename);
     print "Failed to open $_\n" and next unless defined $cuesheet;
 
     unless ($QUIET) {
@@ -91,15 +94,17 @@ foreach (@ARGV) {
     my @tracks;
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
-            print "... Track skipped!\n" and next if (&meta_validate("SKIP", $cuesheet, $file, $track) && !$QUIET);
-
             my $destpath = &build_dest_path($cuesheet);
             my $dest = file($destpath."/".&output_filename($cuesheet, $file, $track));
-
             my $ff  = &ffmpeg($cuesheet, $file, $track);
             my $enc = &encoder($cuesheet, $file, $track);
 
+            my $mp3time = &get_file_time($dest);
+            next unless ($cuetime > $mp3time || $FORCE);
+
+            print "... Track skipped!\n" and next if (&meta_validate("SKIP", $cuesheet, $file, $track) && !$QUIET);
             print "... $dest\n" unless $QUIET;
+
             &sys_cmd ("mkdir -p \"$destpath\"");
             &sys_cmd ("$ff | $enc");
             push (@tracks, "\"$dest\"");
@@ -219,8 +224,9 @@ sub build_dest_path {
 # Take the path to the cuesheet and split it into path and file.
 # If it's in the current directory, use ./ as the path.
 sub split_path {
+    my ($cuesheet) = @_;
     my ($cuepath, $cuefile);
-    if (m/^(.*)[\\\/](.*?)$/) {
+    if ($cuesheet =~ m/^(.*)[\\\/](.*?)$/) {
         ($cuepath, $cuefile) = ($1, $2);
     } else {
         $cuepath = "./";
@@ -307,11 +313,21 @@ sub get_ffmpegtimes {
 }
 
 ##########
+# Get the UNIX timestamp of a file
+sub get_file_time {
+    my ($file) = @_;
+    open(my $fh, "<".$file) or return 0;
+    return (stat($fh))[9];
+}
+
+##########
 sub parse_cuesheet {
     my ($cuesheet) = @_;
     # Cache the path to the cuesheet, since all the source files are relative to it.
     my ($cuepath, $cuefile) = &split_path($cuesheet);
     open(my $fh, "<".$cuesheet) or return undef;
+
+    # Cache the last-modified timestamp of the cuesheet.
     my @cuesheet;
     while (<$fh>) {
         s/\r//g;
@@ -373,6 +389,7 @@ sub parse_cuesheet {
     $data->{_ENCOPTS} = $CONFIG->{ENCOPTS};
     $data->{_ENCODER} = $CONFIG->{ENCODER};
     $data->{_ENCODER} =~ s!^.*/!!;
+
     print Dumper $data if $DEBUG;
     return $data;
 }
