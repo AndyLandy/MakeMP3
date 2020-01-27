@@ -1,4 +1,4 @@
-MakeMP3 is Copyright 2015-2017 by Andrew Paul Landells. 
+MakeMP3 is Copyright 2015-2020 by Andrew Paul Landells. 
 
 Introduction
 ============
@@ -19,7 +19,7 @@ further down for more details as to what metadata MakeMP3 supports.
 Usage
 =====
 
-    MakeMP3 [--ag] [--tg] [--debug] [--dry-run] source_file ...
+    MakeMP3 [--conf=file] [--ag] [--tg] [--debug] [--dry-run] source_file ...
 
 Basic usage is very simple: list your cue sheet(s) on the command line and
 MakeMP3 will process them all and place the resulting MP3 library in a new
@@ -27,6 +27,9 @@ directory called 'makemp3', created in the working directory. MP3s are encoded
 by default with the lame encoder options '--preset extreme -k'
 
 The command-line options work as follows:
+    --conf      Use specificed configuration file instead of MakeMP3 defaults
+                Please see the 'Configuration' section below for more details
+
     --ag        Apply album gain using aacgain. This estimates the average
                 perceived loudness of the entire album and applies a lossless
                 gain change to approximately match it to a reference of 89dB
@@ -40,6 +43,11 @@ The command-line options work as follows:
                 lossless gain chainge to approximately match it to a reference
                 of 89dB sound pressure level.
 
+    --force     By default, MakeMP3 will not overwrite existing files unless the
+                timestamp on the source cue sheet is newer than that of the
+                output file. Using the force option means MakeMP3 will *always*
+                attempt to create a new file, overwriting files if necessary.
+
     --debug     Prints out lots of debugging information, which is mostly useful
                 for development purposes, but can also be helpful to work out
                 why your cue sheets aren't generating the output you expect.
@@ -48,6 +56,127 @@ The command-line options work as follows:
                 well-formed and can be parsed by MakeMP3. Combining --debug and
                 --dry-run is a good way to test what MakeMP3 will do before you
                 commit to running a large encoding job.
+
+Prerequisites
+=============
+
+MakeMP3 is not a standalone product, rather a wrapper around existing tools.
+It relies on the presence of other software to achieve its goals. To make full
+use of MakeMP3, you will need the following tools available on your system.
+
+ *  Perl
+    MakeMP3 is an interpreted Perl script, so you will need a Perl interpreter
+    installed to use it. Perl is standard on macOS and most Linux distributions.
+
+    Additionally, you will need the Perl 'JSON' module. This may be available
+    via package management on some Linux distributions, or can be obtained via
+    CPAN
+
+    By its nature, MakeMP3 is designed to run best in a UNIX command-line
+    environment and is straightforward to set up in Linux or on macOS. If you
+    wish to use it on a Windows system, you will get best results if you use
+    Cygwin to provide a UNIX-like environment for it to operate in.
+
+ *  ffmpeg
+    ffmpeg does the majority of the back-end processing of MakeMP3. It is used
+    to read the source files indicated by the cue sheets, excerpt the individual
+    tracks, and apply the pre-emphasis filter if necessary. You should ensure
+    that your version of ffmpeg is compiled to support all the features you will
+    require. In particular, it's not uncommon to find ffmpeg builds that do not
+    support the pre-emphasis filter.
+
+ *  LAME (or another encoder)
+    By default, MakeMP3 uses LAME to create MP3 files. Whilst ffmpeg supports
+    encoding audio using LAME libraries, the standalone LAME software supports
+    more configuration options and richer metadata.
+    
+    MakeMP3's customisable configuration allows you to switch out lame for
+    another encoder should you so wish. This could simply be ffmpeg, or a tool
+    for creating other formats: e.g. AAC, Ogg Vorbis, or Opus.
+
+ *  aacgain (or an alternative) (optional)
+    MakeMP3 has options for gain-levelling its output files. The default
+    configuration uses aacgain for this, however the configuration system allows
+    you to choose a different tool if a suitable one exists.
+
+Custom Configuration
+====================
+
+MakeMP3 supports custom configurations by way of the --conf switch. This allows
+you to customise much of MakeMP3's behaviour. In particular, you can use 
+alternative encoding engines and control metadata creation. Some sample
+configuration files are provided as a starting point.
+
+A MakeMP3 configuration file is a JSON-formatted text file that specifies the
+following configuration options. Defaults will be used if an option is not
+explicitly specified.
+
+{
+    "VERSION"  : The version of the MakeMP3 configuration file format. This
+                 exists to allow MakeMP3 to support different configuration
+                 file formats in future, should any shortcomings in the current
+                 format come to light. For this version of MakeMP3, this value
+                 must be set to "1"
+    "DESTDIR"  : The name of a destination directory for MakeMP3 to put its
+                 output files. This can be relative to the current path, or can
+                 be an absolute path.
+    "FFMPEG"   : Specifies the path to your ffmpeg binary. If set simply to 
+                 "ffmpeg" then the version on your path will be used.
+    "FFQUIET"  : Command-line option to run ffmpeg in quiet mode. This flag is
+                 enabled in standard operation, but not if --debug is set.
+    "FFOPTS"   : Command-line options required for ffmpeg to extract audio from
+                 a source file. Do not change this unless you know what you are
+                 doing!
+    "FILTER"   : Command-line options required to use ffmpeg's pre-emphasis
+                 filter. Again, this should be left as-is unless you understand
+                 the implications of changing it.
+    "AACGAIN"  : Specifies the path to your aacgain binary. If set simply to
+                 "aacgain" then the version on your path will be used.
+    "AGQUIET"  : Command-line option to run aacgain in quiet mode. This flag is
+                 enabled in standard operation, but not if --debug is set.
+    "AAGOPTS"  : Command-line options to run aacgain in album-gain mode.
+    "ATGOPTS"  : Command-line options to run aacgain in track-gain mode.
+    "ENCODER"  : Path to "lame" or another encoder. Behaves the same as ffmpeg
+                 and aacgain options.
+    "ENQUIET"  : Command-line option to silence your encoder unless --debug is
+                 specified
+    "ENCOPTS"  : Command-line options to specify your encoder settings.
+    "FILEEXT"  : The file extension for your output files. Most likely ".mp3"
+    "METADATA" : [],
+}
+
+A word on metadata:
+
+METADATA is a JSON array of additional strings to append to your encoder. These
+will predominantly be for metadata, and MakeMP3 provides a rich set of templates
+for extracting data from the cue sheets. You may also need a command-line switch
+to specify your output file. That switch should be the last entry in the array
+as MakeMP3 will append the output filename after everything else.
+
+You can reference any directive in the cue sheet by prefixing it with a percent
+symbol, for example the artist name can be referenced as %PERFORMER. MakeMP3
+will return specific track values of field, unless they are not set, in which
+case it will use the value set at the root-level of the cue sheet. If you wish
+to explicitly refer to a value set in the root of the cue sheet, use two percent
+symbols, so %%TITLE will return the album title. Finally, you can 'test' a value
+using %?, so %?COMPILATION will return 1 if the COMPILATION flag is set to TRUE,
+and 0 if it's set to FALSE.
+
+Finally, there are some internal values that you can use in your metadata, they
+are as follows:
+%_CUEPATH     - The absolute path to the cue sheet. Useful for turning relative
+                paths within the cue sheet to absolute ones. Necessary if you
+                want to embed album artwork in your files.
+%_ENCODER     - The value of the ENCODER configuration option, minus path.
+%_ENCOPTS     - The value of the ENCOPTS configuration option.
+%_FLAGS_flag  - The cue sheet FLAGS directive specifies a space-separated list
+                of flags. If you wish to reference any of these, they will be
+                of the form %_FLAGS_name-of-flag. You can also use %? notation
+                to test these values, so '%?_FLAGS_PRE' will return '1' if the
+                pre-emphasis flag is set.
+%_TOTALTRACKS - The largest track number that MakeMP3 found in the cue sheet
+                (This should normally be the last track, but may not be.)
+%_VERSION     - The version string of MakeMP3 you're using.
 
 Cue Sheets and Metadata
 =======================
@@ -102,7 +231,7 @@ FILE "Track 02.wv" WAVE
 MakeMP3 uses many of these cue-sheet directives to provide metadata for the
 output MP3 files. As the cue-sheet format is relatively limited, some standard
 comment types are also used by MakeMP3; supported cue-sheet fields are listed
-below.  Note that some fields can appear at either the top level, the track
+below. Note that some fields can appear at either the top level, the track
 level, or both. For most metadata fields, MakeMP3 will search at the track
 level, and, if not found, will fall back to the corresponding top-level entry
 (if present).
@@ -182,27 +311,37 @@ REM END mm:ss:ff
     If you specify an END timestamp in a track declaration, that timestamp is
     used to end the track, instead of the INDEX 01 of the subsequent track.
 
+Running MakeMP3 in batch mode with multiple threads
+===================================================
+
+Most modern computers have multiple CPU cores, however not all encoders take advantage of this.
+If you are planning on running MakeMP3 on a large number of source files, and want to make better
+utilisation of your CPU resources, you can use 'find' and 'xargs' to great advantage, e.g.:
+
+    find [src] -iname '*.cue' -print0 | xargs -0 -n 1 -P [threads] MakeMP3 [args]
+
+[src]     - The directory containing your source material
+[threads] - The number of simultaneous MakeMP3 instances you want at any one time
+[args]    - Your preferred set of command-line options for MakeMP3
+
 Bugs, Known Issues and Planned Features
 =======================================
 
-MakeMP3 was originally written to fulfil a specific need, so it's currently
-fairly limited in many regards and isn't tremendously configurable.
-
- *  ffmpeg, lame (and aacgain if using --ag or --tg) must be on your path
-    for MakeMP3 to work.
-
- *  lame and aacgain settings are hard-coded into MakeMP3. These should be
-    user-customisable, ideally in a separate configuration file.
-
- *  The encoder should be decoupled from MakeMP3 so that something other than
-    lame can be used instead. Ideally, this will involve an abstract templating
-    scheme much like EAC's so that any encoder can be easily supported.
-
- *  The metadata implementation is incomplete, for example ISRC tags are not 
-    created. It would also be nice to support pre-emphasis correctly.
+As of MakeMP3 1.3.0, all planned features have now been implemented and the
+software is largely reliable. Inevitably, bugs will likely still exist, so if
+you discover any unusual behaviour please report it, along with a copy of the
+cue sheet MakeMP3 was processing at the time.
 
 Revision History
 ================
+v1.3.0
+ *  Added customisable configuration templates, allowing use of different
+    encoders. Some template files are provided.
+ *  Added timestamp validation. MakeMP3 will not overwrite files that are newer
+    than the source cue sheet. Use --force to override this behaviour
+ *  Added support for discs mastered with pre-emphasis. If the PRE flag is set,
+    additional ffmpeg options are set to apply necessary emphasis to the output.
+
 v1.2.1
  *  Added support for EAC non-compliant cue sheets
  *  Handful of minor bugfixes, including changes to how MakeMP3 writes its own
@@ -244,7 +383,7 @@ with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 A copy of the license is included in the section entitled "GNU
 Free Documentation License".
 
-MakeMP3 is Copyright 2015-2017 Andrew Paul Landells
+MakeMP3 is Copyright 2015-2020 Andrew Paul Landells
 
 MakeMP3 is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
