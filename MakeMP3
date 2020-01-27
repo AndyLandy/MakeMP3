@@ -4,7 +4,7 @@
 # MakeMP3
 # 
 # A tool for creating MP3 files from lossless full-disc rips with cue sheets.
-# Copyright 2015-2017 Andrew Paul Landells.
+# Copyright 2015-2020 Andrew Paul Landells.
 # 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,14 +59,18 @@ if ($CFF ne '') {
     open (my $CFH, '<'.$CFF) or die "Failed to open configuration file $CFF\n";
     my $newconf = decode_json(do { local $/; <$CFH> });
     close $CFH;
-    $CONFIG = {%$CONFIG, %$newconf};
+    if (defined ($newconf->{VERSION}) && $newconf->{VERSION} == 1) {
+        $CONFIG = {%$CONFIG, %$newconf};
+    } else {
+        print "Unsupported configuration: $CFF\n";
+    }
 }
 
 print Dumper $CONFIG if $DEBUG;
 
 if ($VERSION) { print <<END;
 MakeMP3 $VER
-Copyright 2015-2017 Andrew Paul Landells
+Copyright 2015-2020 Andrew Paul Landells
 
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
@@ -374,7 +378,7 @@ sub parse_cuesheet {
         my ($k, $v) = &parse_cueline($cuesheet[$i]);
         next unless $k;
         $v =~ s/\"/\\\"/g; # If there are any quotes in there, escape them
-        if ($file >= 0) {
+        if ($file >= 0 && $track >= 0) {
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{$k} = $v;
         } else {
             $data->{$k} = $v;
@@ -387,7 +391,7 @@ sub parse_cuesheet {
 
     # Add extra data to the cuesheet so the metadata engine can recycle it.
     $data->{_TOTALTRACKS} = $ttracks;
-    $data->{_VERSION} = "MakeMP3 $VER";
+    $data->{_VERSION} = "$VER";
     $data->{_CUEPATH} = $cuepath;
     $data->{_ENCOPTS} = $CONFIG->{ENCOPTS};
     $data->{_ENCODER} = $CONFIG->{ENCODER};
@@ -457,7 +461,6 @@ sub fix_noncompliant {
 
 __DATA__
 {
-    "VERSION"  : "1",
     "DESTDIR"  : "makemp3",
     "FFMPEG"   : "ffmpeg",
     "FFQUIET"  : "-v warning",
@@ -469,10 +472,10 @@ __DATA__
     "ATGOPTS"  : "-r -c",
     "ENCODER"  : "lame",
     "ENQUIET"  : "--quiet",
-    "ENCOPTS"  : "--preset extreme -k",
+    "ENCOPTS"  : "--preset extreme",
     "FILEEXT"  : ".mp3",
     "METADATA" : [
-        "--tv TENC=\"%_VERSION / %_ENCOPTS\"",
+        "--tv TENC=\"MakeMP3 %_VERSION / %_ENCODER %_ENCOPTS\"",
         "--tn %TRACK/%_TOTALTRACKS",
         "--tv TPOS=%DISCNUMBER/%TOTALDISCS",
         "--tv TCMP=%?COMPILATION",
