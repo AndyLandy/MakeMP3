@@ -1,0 +1,3 @@
+[submodule "MediaMunge"]
+	path = MediaMunge
+	url = https://github.com/AndyLandy/MediaMunge.git
