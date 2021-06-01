@@ -350,7 +350,11 @@ sub parse_cuesheet {
     for (my $i = 0 ; $i <= $#cuesheet ; $i++) {
         if ($cuesheet[$i] =~ m/^\s*FILE "(.*)" (\w+)/) {
             $file++;
-            $data->{FILE}->[$file]->{FILE} = $1;
+
+	    print "\$data invalid!\n" unless $data;
+            print "\$file invalid!\n" unless $file>=0;
+
+	    $data->{FILE}->[$file]->{FILE} = $1;
             $data->{FILE}->[$file]->{TYPE} = $2;
             $track = -1;
             next;
@@ -358,6 +362,10 @@ sub parse_cuesheet {
         if ($cuesheet[$i] =~ m/^\s*TRACK/) {
             $track++;
             if ($cuesheet[$i] =~ m/(\d+) AUDIO/) {
+                print "\$data invalid!\n" unless $data;
+                print "\$data->{FILE} invalid!\n" unless $data->{FILE};
+                print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
+
                 $data->{FILE}->[$file]->{TRACKS}->[$track]->{TRACK} = $1;
                 $ttracks = $1 if ($1 > $ttracks);
             }
@@ -365,11 +373,28 @@ sub parse_cuesheet {
         }
         if ($cuesheet[$i] =~ m/^\s*INDEX (\d+) (.*)$/) {
             next if $track < 0; # Dodgy cue sheets may cause -1 indices.
-            $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
+
+	    print "\$data invalid!\n" unless $data;
+	    print "\$file invalid!\n" unless $file>=0;
+	    print "\$data->{FILE} invalid!\n" unless $data->{FILE};
+	    print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
+	    print "\$data->{FILE}->[\$file]->{TRACKS} invalid!\n" unless $data->{FILE}->[$file]->{TRACKS};
+	    print "\$data->{FILE}->[\$file]->{TRACKS}->[\$track] invalid!\n" unless $data->{FILE}->[$file]->{TRACKS}->[$track];
+
+	    $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
             next;
         }
         if ($cuesheet[$i] =~ m/^\s*FLAGS (.*)/) {
             foreach my $flag (split /\s+/,$1) {
+                print "\$data invalid!\n" unless $data;
+		print "\$file invalid!\n" unless $file>=0;
+		print "\$track invalid!\n" unless $track>=0;
+		print "\$flag invalid!\n" unless $flag;
+		print "\$data->{FILE} invalid!\n" unless $data->{FILE};
+		print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
+		print "\$data->{FILE}->[\$file]->{TRACKS} invalid!\n" unless $data->{FILE}->[$file]->{TRACKS};
+		print "\$data->{FILE}->[\$file]->{TRACKS}->[\$track] invalid!\n" unless $data->{FILE}->[$file]->{TRACKS}->[$track];
+
                 $data->{FILE}->[$file]->{TRACKS}->[$track]->{"_FLAGS_$flag"} = 'TRUE';
             }
             next;
@@ -378,7 +403,15 @@ sub parse_cuesheet {
         my ($k, $v) = &parse_cueline($cuesheet[$i]);
         next unless $k;
         $v =~ s/\"/\\\"/g; # If there are any quotes in there, escape them
+        next unless $k;
         if ($file >= 0 && $track >= 0) {
+            print "\$k invalid!\n" unless $k;
+            print "\$data invalid!\n" unless $data;
+            print "\$data->{FILE} invalid!\n" unless $data->{FILE};
+            print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
+            print "\$data->{FILE}->[\$file]->{TRACKS} invalid!\n" unless $data->{FILE}->[$file]->{TRACKS};
+            print "\$data->{FILE}->[\$file]->{TRACKS}->[\$track] invalid!\n" unless $data->{FILE}->[$file]->{TRACKS}->[$track];
+
             $data->{FILE}->[$file]->{TRACKS}->[$track]->{$k} = $v;
         } else {
             $data->{$k} = $v;
