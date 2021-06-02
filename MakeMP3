@@ -85,14 +85,15 @@ END
 
 
 foreach my $cuefilename (@ARGV) {
+    print "### $cuefilename\n";
     my $cuesheet = &parse_cuesheet($cuefilename);
     my $cuetime = &get_file_time($cuefilename);
     print "Failed to open $_\n" and next unless defined $cuesheet;
 
     unless ($QUIET) {
         print "$cuesheet->{PERFORMER} - " if defined $cuesheet->{PERFORMER};
-        print "$cuesheet->{TITLE}:" if defined $cuesheet->{TITLE};
-        print "\n";
+        print "$cuesheet->{TITLE}" if defined $cuesheet->{TITLE};
+        print ":\n";
     }
 
     my @tracks;
