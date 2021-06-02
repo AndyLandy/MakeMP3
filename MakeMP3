@@ -364,8 +364,8 @@ sub parse_cuesheet {
             $track++;
             if ($cuesheet[$i] =~ m/(\d+) AUDIO/) {
                 print "\$data invalid!\n" unless $data;
-                print "\$data->{FILE} invalid!\n" unless $data->{FILE};
-                print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
+		die "TRACK directive does not correspond to a FILE!\n" unless $data->{FILE};
+		die "No current file!\n" unless $file>=0;
 
                 $data->{FILE}->[$file]->{TRACKS}->[$track]->{TRACK} = $1;
                 $ttracks = $1 if ($1 > $ttracks);
@@ -375,12 +375,12 @@ sub parse_cuesheet {
         if ($cuesheet[$i] =~ m/^\s*INDEX (\d+) (.*)$/) {
             next if $track < 0; # Dodgy cue sheets may cause -1 indices.
 
-	    print "\$data invalid!\n" unless $data;
-	    print "\$file invalid!\n" unless $file>=0;
-	    print "\$data->{FILE} invalid!\n" unless $data->{FILE};
-	    print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
-	    print "\$data->{FILE}->[\$file]->{TRACKS} invalid!\n" unless $data->{FILE}->[$file]->{TRACKS};
-	    print "\$data->{FILE}->[\$file]->{TRACKS}->[\$track] invalid!\n" unless $data->{FILE}->[$file]->{TRACKS}->[$track];
+            print "\$data invalid!\n" unless $data;
+            print "\$file invalid!\n" unless $file>=0;
+            print "\$data->{FILE} invalid!\n" unless $data->{FILE};
+            print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
+            print "\$data->{FILE}->[\$file]->{TRACKS} invalid!\n" unless $data->{FILE}->[$file]->{TRACKS};
+            print "\$data->{FILE}->[\$file]->{TRACKS}->[\$track] invalid!\n" unless $data->{FILE}->[$file]->{TRACKS}->[$track];
 
 	    $data->{FILE}->[$file]->{TRACKS}->[$track]->{INDEX}->[$1] = $2;
             next;
@@ -388,13 +388,13 @@ sub parse_cuesheet {
         if ($cuesheet[$i] =~ m/^\s*FLAGS (.*)/) {
             foreach my $flag (split /\s+/,$1) {
                 print "\$data invalid!\n" unless $data;
-		print "\$file invalid!\n" unless $file>=0;
-		print "\$track invalid!\n" unless $track>=0;
-		print "\$flag invalid!\n" unless $flag;
-		print "\$data->{FILE} invalid!\n" unless $data->{FILE};
-		print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
-		print "\$data->{FILE}->[\$file]->{TRACKS} invalid!\n" unless $data->{FILE}->[$file]->{TRACKS};
-		print "\$data->{FILE}->[\$file]->{TRACKS}->[\$track] invalid!\n" unless $data->{FILE}->[$file]->{TRACKS}->[$track];
+                print "\$file invalid!\n" unless $file>=0;
+                print "\$track invalid!\n" unless $track>=0;
+                print "\$flag invalid!\n" unless $flag;
+                print "\$data->{FILE} invalid!\n" unless $data->{FILE};
+                print "\$data->{FILE}->[\$file] invalid!\n" unless $data->{FILE}->[$file];
+                print "\$data->{FILE}->[\$file]->{TRACKS} invalid!\n" unless $data->{FILE}->[$file]->{TRACKS};
+                print "\$data->{FILE}->[\$file]->{TRACKS}->[\$track] invalid!\n" unless $data->{FILE}->[$file]->{TRACKS}->[$track];
 
                 $data->{FILE}->[$file]->{TRACKS}->[$track]->{"_FLAGS_$flag"} = 'TRUE';
             }
