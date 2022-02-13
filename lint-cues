@@ -1,0 +1,108 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+sub print_err;
+sub print_warn;
+sub print_info;
+
+foreach my $cuesheet (@ARGV) {
+	&lint_cuesheet($cuesheet);
+}
+
+exit 0;
+
+########################################################################################################################
+
+sub lint_cuesheet {
+	my ($cuesheet) = @_;
+
+	die unless -e $cuesheet;
+	die if -d $cuesheet;
+
+	open my $handle, '<', $cuesheet or die "'$cuesheet': cannot open\n";
+
+	my ($dateCount, $artCount, $fileCount, $perfCount, $titlCount, $curaCount) = (0, 0, 0, 0, 0, 0);
+
+	while (my $line = <$handle>) {
+		chomp $line;
+
+		if ($line =~ /^\s*REM\s*SKIP\s*TRUE\s*$/) {
+			print_info $cuesheet, 'skipping';
+		}
+
+		my ($date, $art, $file, $perf, $title, $curated) = (
+			&line_date   ($line),
+			&line_artwork($line),
+			&line_file   ($line),
+			&line_perf   ($line),
+			&line_title  ($line),
+			&line_curated($line));
+
+		++$dateCount if defined $date;
+		++$artCount  if defined $art ;
+		++$fileCount if defined $file;
+		++$perfCount if defined $perf;
+		++$titlCount if defined $title;
+		++$curaCount if defined $curated;
+
+		foreach my $dep (grep { defined $_ } ($art, $file)) {
+			$cuesheet =~ /^(?:\.\/)?(.*(?<!\\)\/).*?$/;
+			my $depPath = "$1$dep";
+			print_err $cuesheet, "missing dependency: $depPath" unless -e $depPath;
+		}
+	}
+
+	print_err  $cuesheet, 'missing REM DATE'    unless $dateCount>=1;
+	print_err  $cuesheet, 'missing FILE'        unless $fileCount>=1;
+	print_warn $cuesheet, 'missing REM ARTWORK' unless $artCount >=1;
+	print_warn $cuesheet, 'multiple REM ARTWORK' unless $artCount <=1;
+	print_warn $cuesheet, 'missing PERFORMER'   unless $perfCount>=1;
+	print_warn $cuesheet, 'missing TITLE'       unless $titlCount>=1;
+	print_warn $cuesheet, 'missing REM CURATED' unless $curaCount>=1;
+}
+
+sub line_date {
+	$_[0] =~ /^\s*REM\s*DATE\s*"([^"]*)"\s*$/;
+	return $1;
+}
+
+sub line_file {
+	$_[0] =~ /^\s*FILE\s*"([^"]*)"\s*WAVE\s*$/;
+	return $1;
+}
+
+sub line_artwork {
+	$_[0] =~ /^\s*REM\s*ARTWORK\s*"([^"]*)"\s*$/;
+	return $1;
+}
+
+sub line_perf {
+	$_[0] =~ /^\s*PERFORMER\s*"([^"]*)"\s*$/;
+	return $1;
+}
+
+sub line_title {
+	$_[0] =~ /^\s*TITLE\s*"([^"]*)"\s*$/;
+	return $1;
+}
+
+sub line_curated {
+	$_[0] =~ /^\s*REM\s*CURATED\s*"([^"]*)"\s*$/;
+	return $1;
+}
+
+sub print_err {
+	my ($cuesheet, $msg) = @_;
+	print STDERR "ERROR $cuesheet: $msg\n";
+}
+
+sub print_warn {
+	my ($cuesheet, $msg) = @_;
+	print STDERR "$cuesheet: $msg\n";
+}
+
+sub print_info {
+	my ($cuesheet, $msg) = @_;
+	print STDERR "$cuesheet: $msg\n";
+}

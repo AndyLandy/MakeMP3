@@ -1,0 +1,90 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use File::Find::Wanted qw(find_wanted);
+use List::MoreUtils qw(uniq);
+
+sub flatten;
+
+foreach my $cuesheet (&list_cuesheets()) {
+	printf "%s\n", $cuesheet;
+}
+
+exit 0;
+
+########################################################################################################################
+
+# This recursively eliminates arrays and replaces them with their contents to make one big list
+sub flatten {
+	return map { ref $_ eq 'ARRAY' ? &flatten(@$_) : $_ } @_;
+}
+
+# This returns the passed list of filesystem items with directories replaced by their descendant cuesheets
+sub expand_dirs {
+	my @result;
+
+	foreach my $item (flatten @_) {
+		# Nonexistent items are an error
+		die "nonexistent: $item\n" unless -e $item;
+
+		# Expand directories
+		if (-d $item) {
+			push @result, find_wanted(sub { -f && /\.cue$/i }, $item);
+			next;
+		}
+
+		push @result, $item; # Other items pass through
+	}
+
+	return @result;
+}
+
+sub expand_list {
+	my ($list) = @_;
+
+	my @result;
+
+	# Open the listfile
+	my $handle;
+	die "open failed: $list\n" unless open $handle, '<', $list;
+
+		my $listDir = $list =~ s/[^\/]*?\.list$//r;
+
+		# Add the listfile's items
+		while (my $line = <$handle>) {
+			chomp $line;
+			push @result, "$listDir$line" if length $line;
+		}
+
+	return @result;
+}
+
+# This returns the passed list of filesystem items with list files (extension .list) replaced by their contents
+sub expand_lists {
+	my @result;
+
+	foreach my $item (flatten @_) {
+		# Pass through non-listfile items unmodified
+		unless ($item =~ /\.list$/) {
+			push @result, $item;
+			next;
+		}
+
+		push @result, &expand_list($item);
+	}
+
+	return @result;
+}
+
+# Remove multiple path separators and current-dir prefixes
+sub sanitise_list {
+	return map { ($_ =~ s/\/+/\//gr) =~ s/(?:^|\/)\.\///r } flatten @_;
+}
+
+# Alter this if we decide to support items on stdin
+sub list_cuesheets {
+	return uniq &sanitise_list(
+		&expand_dirs(
+			&expand_lists(@ARGV)));
+}
