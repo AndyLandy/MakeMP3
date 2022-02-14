@@ -65,21 +65,7 @@ sub lint_cuesheet {
 		++$dateCount if defined $date;
 		if (defined $art) {
 			++$artCount;
-			my $i = info_artwork($cueDir.$art);
-
-			if (defined $i) {
-				print_warn $cuesheet, "art area < $AN_A"          if $i->{a} < $AN_A;
-				print_warn $cuesheet, "art area > $AX_A"          if $i->{a} > $AX_A;
-				print_warn $cuesheet, "art width  < $AN_X"        if $i->{x} < $AN_X;
-				print_warn $cuesheet, "art width  > $AX_X"        if $i->{x} > $AX_X;
-				print_warn $cuesheet, "art height < $AN_Y"        if $i->{y} < $AN_Y;
-				print_warn $cuesheet, "art height > $AX_Y"        if $i->{y} > $AX_Y;
-				print_warn $cuesheet, "art bytes < $AN_B"         if $i->{b} < $AN_B;
-				print_warn $cuesheet, "art bytes > $AX_B"         if $i->{b} > $AX_B;
-			}
-			else {
-				print_err  $cuesheet, 'can\'t get art dimensions' unless defined $i;
-			}
+			&check_art($cuesheet, $cueDir.$art);
 		}
 		++$fileCount if defined $file;
 		++$perfCount if defined $perf;
@@ -92,13 +78,13 @@ sub lint_cuesheet {
 		}
 	}
 
-	print_err  $cuesheet, 'missing REM DATE'     unless $dateCount>=1;
-	print_err  $cuesheet, 'missing FILE'         unless $fileCount>=1;
-	print_warn $cuesheet, 'missing REM ARTWORK'  unless $artCount >=1;
-	print_warn $cuesheet, 'multiple REM ARTWORK' unless $artCount <=1;
-	print_warn $cuesheet, 'missing PERFORMER'    unless $perfCount>=1;
-	print_warn $cuesheet, 'missing TITLE'        unless $titlCount>=1;
-	print_warn $cuesheet, 'missing REM CURATED'  unless $curaCount>=1;
+	print_err  $cuesheet, 'missing date'         unless $dateCount>=1;
+	print_err  $cuesheet, 'missing audio'        unless $fileCount>=1;
+	print_warn $cuesheet, 'missing art'          unless $artCount >=1;
+	print_warn $cuesheet, 'multiple art'         unless $artCount <=1;
+	print_warn $cuesheet, 'missing performer'    unless $perfCount>=1;
+	print_warn $cuesheet, 'missing title'        unless $titlCount>=1;
+	print_warn $cuesheet, 'missing curation tag' unless $curaCount>=1;
 }
 
 sub line_date {
@@ -131,7 +117,26 @@ sub line_curated {
 	return $1;
 }
 
-sub info_artwork {
+sub check_art {
+	my ($cuesheet, $art) = @_;
+
+	my $i = &info_art($art);
+	unless (defined $i) {
+		print_err  $cuesheet, 'can\'t get art dimensions' unless defined $i;
+		return undef;
+	}
+
+	print_warn $art, "art area < $AN_A"          if $i->{a} < $AN_A;
+	print_warn $art, "art area > $AX_A"          if $i->{a} > $AX_A;
+	print_warn $art, "art width  < $AN_X"        if $i->{x} < $AN_X;
+	print_warn $art, "art width  > $AX_X"        if $i->{x} > $AX_X;
+	print_warn $art, "art height < $AN_Y"        if $i->{y} < $AN_Y;
+	print_warn $art, "art height > $AX_Y"        if $i->{y} > $AX_Y;
+	print_warn $art, "art bytes < $AN_B"         if $i->{b} < $AN_B;
+	print_warn $art, "art bytes > $AX_B"         if $i->{b} > $AX_B;
+}
+
+sub info_art {
 	my ($path) = @_;
 
 	return undef unless `file "$path"` =~ /:.*?,\s*(\d+)x(\d+),/ and defined $1 and defined $2;
