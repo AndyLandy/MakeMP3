@@ -6,12 +6,25 @@ sub print_err;
 sub print_warn;
 sub print_info;
 
-our ($ART_X, $ART_Y, $ART_TOL) = (
-	600 ,
-	600 ,
-	0.05,
+our ($AN_X, $AX_X, $AN_Y, $AX_Y, $AN_A, $AX_A, $AN_B, $AX_B) = (
+	300,
+	600,
+	300,
+	600,
+	90000,
+	360000,
+	4*1024,
+	160*1024,
 );
-our $ART_PX = $ART_X*$ART_Y;
+
+#our ($ART_X, $ART_Y, $ART_BYTES_MIN, $ART_BYTES_MAX, $ART_TOL) = (
+#	600 ,
+#	600 ,
+#	48*1024,
+#	144*1024,
+#	0.05,
+#);
+#our $ART_PX = $ART_X*$ART_Y;
 
 foreach my $cuesheet (@ARGV) {
 	&lint_cuesheet($cuesheet);
@@ -54,10 +67,19 @@ sub lint_cuesheet {
 			++$artCount;
 			my $i = info_artwork($cueDir.$art);
 
-			print_err  $cuesheet, 'can\'t get artwork dimensions' unless defined $i and defined $i->{x} and defined $i->{y};
-			print_warn $cuesheet, 'bad artwork area'       unless &margin($i->{x} * $i->{y}, $ART_PX) < $ART_TOL;
-			print_warn $cuesheet, 'bad artwork width'      unless &margin($i->{x}, $ART_X) < $ART_TOL;
-			print_warn $cuesheet, 'bad artwork height'     unless &margin($i->{y}, $ART_Y) < $ART_TOL;
+			if (defined $i) {
+				print_warn $cuesheet, "art area < $AN_A"          if $i->{a} < $AN_A;
+				print_warn $cuesheet, "art area > $AX_A"          if $i->{a} > $AX_A;
+				print_warn $cuesheet, "art width  < $AN_X"        if $i->{x} < $AN_X;
+				print_warn $cuesheet, "art width  > $AX_X"        if $i->{x} > $AX_X;
+				print_warn $cuesheet, "art height < $AN_Y"        if $i->{y} < $AN_Y;
+				print_warn $cuesheet, "art height > $AX_Y"        if $i->{y} > $AX_Y;
+				print_warn $cuesheet, "art bytes < $AN_B"         if $i->{b} < $AN_B;
+				print_warn $cuesheet, "art bytes > $AX_B"         if $i->{b} > $AX_B;
+			}
+			else {
+				print_err  $cuesheet, 'can\'t get art dimensions' unless defined $i;
+			}
 		}
 		++$fileCount if defined $file;
 		++$perfCount if defined $perf;
@@ -65,7 +87,7 @@ sub lint_cuesheet {
 		++$curaCount if defined $curated;
 
 		foreach my $dep (grep { defined $_ } ($art, $file)) {
-			my $depPath = "$cueDir$dep";
+			my $depPath = $cueDir.$dep;
 			print_err $cuesheet, "missing dependency: $depPath" unless -e $depPath;
 		}
 	}
@@ -112,12 +134,14 @@ sub line_curated {
 sub info_artwork {
 	my ($path) = @_;
 
-	return undef unless `file "$path"` =~ /:.*?,\s*(\d+)x(\d+),/;
+	return undef unless `file "$path"` =~ /:.*?,\s*(\d+)x(\d+),/ and defined $1 and defined $2;
 
-	my %dims = (x => $1, y => $2);
-	return undef unless defined $dims{x} and defined $dims{y};
-
-	return \%dims;
+	return {
+		x => $1,
+		y => $2,
+		a  =>  $1 * $2,
+		b => -s $path,
+	};
 }
 
 sub margin {
