@@ -17,15 +17,6 @@ our ($AN_X, $AX_X, $AN_Y, $AX_Y, $AN_A, $AX_A, $AN_B, $AX_B) = (
 	160*1024,
 );
 
-#our ($ART_X, $ART_Y, $ART_BYTES_MIN, $ART_BYTES_MAX, $ART_TOL) = (
-#	600 ,
-#	600 ,
-#	48*1024,
-#	144*1024,
-#	0.05,
-#);
-#our $ART_PX = $ART_X*$ART_Y;
-
 foreach my $cuesheet (@ARGV) {
 	&lint_cuesheet($cuesheet);
 }
@@ -56,35 +47,35 @@ sub lint_cuesheet {
 
 		my ($date, $art, $file, $perf, $title, $curated) = (
 			&line_date   ($line),
-			&line_artwork($line),
-			&line_file   ($line),
+			&line_art    ($line),
+			&line_audio  ($line),
 			&line_perf   ($line),
 			&line_title  ($line),
 			&line_curated($line));
 
-		++$dateCount if defined $date;
 		if (defined $art) {
 			++$artCount;
 			&check_art($cuesheet, $cueDir.$art);
 		}
-		++$fileCount if defined $file;
+
+		if (defined $file) {
+			++$fileCount;
+			&check_audio($cuesheet, $cueDir.$file);
+		}
+
+		++$dateCount if defined $date;
 		++$perfCount if defined $perf;
 		++$titlCount if defined $title;
 		++$curaCount if defined $curated;
-
-		foreach my $dep (grep { defined $_ } ($art, $file)) {
-			my $depPath = $cueDir.$dep;
-			print_err $cuesheet, "missing dependency: $depPath" unless -e $depPath;
-		}
 	}
 
-	print_err  $cuesheet, 'missing date'         unless $dateCount>=1;
-	print_err  $cuesheet, 'missing audio'        unless $fileCount>=1;
-	print_warn $cuesheet, 'missing art'          unless $artCount >=1;
-	print_warn $cuesheet, 'multiple art'         unless $artCount <=1;
-	print_warn $cuesheet, 'missing performer'    unless $perfCount>=1;
-	print_warn $cuesheet, 'missing title'        unless $titlCount>=1;
-	print_warn $cuesheet, 'missing curation tag' unless $curaCount>=1;
+	print_err  $cuesheet, 'no DATE tag'             unless $dateCount>=1;
+	print_err  $cuesheet, 'no FILE directives'      unless $fileCount>=1;
+	print_warn $cuesheet, 'no ARTWORK tag'          unless $artCount >=1;
+	print_warn $cuesheet, 'multiple ARTWORK tags'   unless $artCount <=1;
+	print_warn $cuesheet, 'no PERFORMER directives' unless $perfCount>=1;
+	print_warn $cuesheet, 'no TITLE directives'     unless $titlCount>=1;
+	print_warn $cuesheet, 'no CURATED tag'          unless $curaCount>=1;
 }
 
 sub line_date {
@@ -92,12 +83,12 @@ sub line_date {
 	return $1;
 }
 
-sub line_file {
+sub line_audio {
 	return undef unless $_[0] =~ /^\s*FILE\s+"(.*)"\s+WAVE\s*$/;
 	return $1;
 }
 
-sub line_artwork {
+sub line_art {
 	return undef unless $_[0] =~ /^\s*REM\s+ARTWORK\s+"(.*)"\s*$/;
 	return $1;
 }
@@ -117,8 +108,41 @@ sub line_curated {
 	return $1;
 }
 
+sub check_file {
+	my ($cuesheet, $file, $label) = @_;
+
+	unless (-e $file) {
+		print_err $file, "missing $label";
+		return 0;
+	}
+
+	unless (-f $file or -l $file) {
+		print_err $file, "non-file $label";
+		return 0;
+	}
+
+	unless (-s $file) {
+		print_err $file, "empty $label";
+		return 0;
+	}
+
+	unless (-r $file) {
+		print_err $file, "non-readable $label";
+		return 0;
+	}
+
+	unless (-B $file) {
+		print_err $file, "non-binary $label";
+		return 0;
+	}
+
+	return 1;
+}
+
 sub check_art {
 	my ($cuesheet, $art) = @_;
+
+	return unless &check_file($cuesheet, $art, 'art file');
 
 	my $i = &info_art($art);
 	unless (defined $i) {
@@ -134,6 +158,14 @@ sub check_art {
 	print_warn $art, "art height > $AX_Y"        if $i->{y} > $AX_Y;
 	print_warn $art, "art bytes < $AN_B"         if $i->{b} < $AN_B;
 	print_warn $art, "art bytes > $AX_B"         if $i->{b} > $AX_B;
+}
+
+sub check_audio {
+	my ($cuesheet, $audio) = @_;
+
+	return unless &check_file($cuesheet, $audio, 'audio file');
+
+	# TODO check min/max file duration?
 }
 
 sub info_art {
