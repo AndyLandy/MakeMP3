@@ -68,7 +68,7 @@ print Dumper $CONFIG if $DEBUG;
 
 if ($VERSION) { print <<END;
 MakeMP3 $VER
-Copyright 2015-2020 Andrew Paul Landells
+Copyright 2015-2022 Andrew Paul Landells
 
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
