@@ -84,7 +84,7 @@ sub sanitise_list {
 
 # Alter this if we decide to support items on stdin
 sub list_cuesheets {
-	return uniq &sanitise_list(
+	return uniq sort &sanitise_list(
 		&expand_dirs(
 			&expand_lists(@ARGV)));
 }

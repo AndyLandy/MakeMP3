@@ -7,14 +7,14 @@ sub print_warn;
 sub print_info;
 
 our ($AN_X, $AX_X, $AN_Y, $AX_Y, $AN_A, $AX_A, $AN_B, $AX_B) = (
-	300,
+	200,
 	600,
-	300,
+	200,
 	600,
-	90000,
+	40000,
 	360000,
 	4*1024,
-	160*1024,
+	1024*1024,
 );
 
 foreach my $cuesheet (@ARGV) {
