@@ -30,7 +30,7 @@ sub expand_dirs {
 
 		# Expand directories
 		if (-d $item) {
-			push @result, find_wanted(sub { -f && /\.cue$/i }, $item);
+			push @result, find_wanted(sub { -f && /\.cuej$/i }, $item);
 			next;
 		}
 

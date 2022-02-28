@@ -8,11 +8,11 @@ sub print_info;
 
 our ($AN_X, $AX_X, $AN_Y, $AX_Y, $AN_A, $AX_A, $AN_B, $AX_B) = (
 	200,
-	600,
+	2400,
 	200,
-	600,
+	2400,
 	40000,
-	360000,
+	5760000,
 	4*1024,
 	1024*1024,
 );
@@ -76,6 +76,7 @@ sub lint_cuesheet {
 	print_warn $cuesheet, 'no PERFORMER directives' unless $perfCount>=1;
 	print_warn $cuesheet, 'no TITLE directives'     unless $titlCount>=1;
 	print_warn $cuesheet, 'no CURATED tag'          unless $curaCount>=1;
+	print_warn $cuesheet, 'multiple CURATED tags'   unless $curaCount<=1;
 }
 
 sub line_date {
