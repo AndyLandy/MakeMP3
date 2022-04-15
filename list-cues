@@ -2,8 +2,8 @@
 use strict;
 use warnings;
 
-use File::Find::Wanted qw(find_wanted);
 use List::MoreUtils qw(uniq);
+use IPC::Run3 qw(run3);
 
 sub flatten;
 
@@ -20,6 +20,14 @@ sub flatten {
 	return map { ref $_ eq 'ARRAY' ? &flatten(@$_) : $_ } @_;
 }
 
+sub find_cues {
+	local $/ = "\0";
+
+	run3(['find', @_, '-type', 'f', '-iname', '*.cue', '-print0'], \undef, \my @results, undef);
+	chomp @results;
+	return @results;
+}
+
 # This returns the passed list of filesystem items with directories replaced by their descendant cuesheets
 sub expand_dirs {
 	my @result;
@@ -30,7 +38,7 @@ sub expand_dirs {
 
 		# Expand directories
 		if (-d $item) {
-			push @result, find_wanted(sub { -f && /\.cuej$/i }, $item);
+			push @result, &find_cues($item);
 			next;
 		}
 
