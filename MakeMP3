@@ -508,7 +508,7 @@ sub fix_noncompliant {
 __DATA__
 {
     "DESTDIR"  : "makemp3",
-    "FFMPEG"   : "ffmpeg",
+    "FFMPEG"   : "ffmpeg -hide_banner",
     "FFQUIET"  : "-v warning",
     "FFOPTS"   : "-map 0:a -c:a pcm_s32le -f wav",
     "FILTER"   : "-af aemphasis=type=cd",
