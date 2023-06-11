@@ -70,6 +70,7 @@ sub lint_cuesheet {
 		++$curaCount if defined $curated;
 	}
 
+	# Warn on disc Y of X where Y>X
 	print_err  $cuesheet, 'no DATE tag'             unless $dateCount>=1;
 	print_err  $cuesheet, 'no FILE directives'      unless $fileCount>=1;
 	print_warn $cuesheet, 'no ARTWORK tag'          unless $artCount >=1;
