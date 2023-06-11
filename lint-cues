@@ -75,7 +75,7 @@ sub lint_cuesheet {
 	print_warn $cuesheet, 'multiple ARTWORK tags'   unless $artCount <=1;
 	print_warn $cuesheet, 'no PERFORMER directives' unless $perfCount>=1;
 	print_warn $cuesheet, 'no TITLE directives'     unless $titlCount>=1;
-	print_warn $cuesheet, 'no CURATED tag'          unless $curaCount>=1;
+#	print_warn $cuesheet, 'no CURATED tag'          unless $curaCount>=1;
 	print_warn $cuesheet, 'multiple CURATED tags'   unless $curaCount<=1;
 }
 
