@@ -87,7 +87,7 @@ sub expand_lists {
 
 # Remove multiple path separators and current-dir prefixes
 sub sanitise_list {
-	return map { ($_ =~ s/\/+/\//gr) =~ s/(?:^|\/)\.\///r } flatten @_;
+	return map { ($_ =~ s/(?!^)\/+/\//gr) =~ s/(?:^|\/)\.\///r } flatten @_;
 }
 
 # Alter this if we decide to support items on stdin
