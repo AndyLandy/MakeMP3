@@ -29,6 +29,8 @@ use JSON;
 
 my $VER = '1.3.2';
 
+$Data::Dumper::Sortkeys = 1;
+
 ##########
 # option variables with default value (false)
 my $HELP = '';
