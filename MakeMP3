@@ -101,7 +101,7 @@ foreach my $cuefilename (@ARGV) {
     for (my $file = 0 ; $file <= $#{$cuesheet->{FILE}} ; $file++) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
             my $destpath = &build_dest_path($cuesheet);
-            my $dest = file($destpath."/".&output_filename($cuesheet, $file, $track));
+            my $dest = file($destpath, &output_filename($cuesheet, $file, $track));
             my $ff  = &ffmpeg($cuesheet, $file, $track);
             my $enc = &encoder($cuesheet, $file, $track);
 
