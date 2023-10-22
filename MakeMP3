@@ -102,8 +102,10 @@ foreach my $cuefilename (@ARGV) {
         for (my $track = 0 ; $track <= $#{$cuesheet->{FILE}->[$file]->{TRACKS}} ; $track++) {
             my $destpath = &build_dest_path($cuesheet);
             my $dest = file($destpath, &output_filename($cuesheet, $file, $track));
+            my $nonce = sprintf "%08X\n", rand(0xffffffff);
+            my $tempfile = "$dest.$nonce";
             my $ff  = &ffmpeg($cuesheet, $file, $track);
-            my $enc = &encoder($cuesheet, $file, $track);
+            my $enc = &encoder($cuesheet, $file, $track, $tempfile);
 
             my $mp3time = &get_file_time($dest);
             next unless ($cuetime > $mp3time || $FORCE);
@@ -111,8 +113,10 @@ foreach my $cuefilename (@ARGV) {
             print "... Track skipped!\n" and next if (&meta_validate("SKIP", $cuesheet, $file, $track) && !$QUIET);
             print "... $dest\n" unless $QUIET;
 
-            &sys_cmd ("mkdir -p \"$destpath\"");
-            &sys_cmd ("$ff | $enc");
+            &sys_cmd ("mkdir -p \"$destpath\"") || next ;
+            &sys_cmd ("$ff | $enc") || next;
+            &sys_cmd ("mv -f \"$tempfile\" \"$destpath\"") || next;
+
             push (@tracks, "\"$dest\"");
         }
     }
@@ -188,7 +192,7 @@ sub metameta {
 ##########
 # Build the encoder command line to create the output file with metadata
 sub encoder {
-    my ($cuesheet, $file, $track) = @_;
+    my ($cuesheet, $file, $track, $dest) = @_;
     my $enc  = "$CONFIG->{ENCODER} $CONFIG->{ENCOPTS} ";
        $enc .= "$CONFIG->{ENQUIET} " unless $DEBUG;
 
@@ -202,7 +206,7 @@ sub encoder {
         }
         $enc .= "$line ";
     }
-    $enc .= '"'.file(&build_dest_path($cuesheet), &output_filename($cuesheet, $file, $track)).'"';
+    $enc .= "\"$dest\"";
     return $enc;
 }
 
