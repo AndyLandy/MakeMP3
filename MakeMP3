@@ -142,7 +142,7 @@ sub sys_cmd {
         my $core = $? & 128; # Bit 8 is core dump (true/false)
         my $kill = $? & 127; # Bits 1-7 are the kill signal received
 
-        my $error = "$cmd exited with returncode $exit";
+        my $error = "!!! `$cmd`: exited with returncode $exit";
         $error   .= ", killed with signal $kill" if ($kill);
         $error   .= ", core dumped" if ($core);
         warn ($error);
