@@ -39,7 +39,6 @@ my $DRY_RUN = '';
 my $DEBUG = ''; 
 my $QUIET = '';
 my $FORCE = '';
-my $SORT = '';
 my $GAIN = 'cue';
 my $CFF = '';
 
@@ -50,7 +49,6 @@ GetOptions (
     'debug'   => \$DEBUG,
     'quiet'   => \$QUIET,
     'force'   => \$FORCE,
-    'sort'    => \$SORT,
     'gain=s'  => \$GAIN,
     'conf=s'  => \$CFF,
 );
@@ -81,7 +79,7 @@ END
 ; exit 0 }
 
 if ($HELP) { print <<END;
-Usage: $0 [--conf=config_file] [--gain=cue|album|track|none] [--debug] [--dry-run] [--force] [--sort] source_file ...
+Usage: $0 [--conf=config_file] [--gain=cue|album|track|none] [--debug] [--dry-run] [--force]  source_file ...
 END
 ; exit 0 }
 
@@ -231,7 +229,7 @@ sub build_dest_path {
     my ($cuesheet) = @_;
     my $p = &sanitise_filename($cuesheet->{PERFORMER});
     my $t = &sanitise_filename($cuesheet->{TITLE});
-    if ($SORT) {
+    if (defined $CONFIG->{FNSORT} && lc($CONFIG->{FNSORT}) eq 'yes') {
         $p = &sort_filename(&sanitise_filename($cuesheet->{PERFORMER}));
         $t = &sort_filename(&sanitise_filename($cuesheet->{TITLE}));
     }
@@ -477,9 +475,11 @@ sub sanitise_filename {
 ##########
 sub sort_filename {
     my ($filename) = @_;
-    if ($filename =~ m/^(The) (.*)$/){
+    if ($filename =~ m/^(The)\s+(.*)$/) {
         $filename = "$2, $1";
-    } elsif ($filename =~ m/^(A) (.*)$/){
+    } elsif ($filename =~ m/^(A)\s+(.*)$/) {
+        $filename = "$2, $1";
+    } elsif ($filename =~ m/^(An)\s+(.*)$/) {
         $filename = "$2, $1";
     }
     return $filename;
@@ -527,6 +527,7 @@ __DATA__
     "ENQUIET"  : "--quiet",
     "ENCOPTS"  : "--preset extreme",
     "FILEEXT"  : ".mp3",
+    "FNSORT"   : "no",
     "METADATA" : [
         "--tv TENC=\"MakeMP3 %_VERSION / %_ENCODER %_ENCOPTS\"",
         "--tn %TRACK/%_TOTALTRACKS",
