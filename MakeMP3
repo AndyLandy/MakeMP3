@@ -113,7 +113,7 @@ foreach my $cuefilename (@ARGV) {
             print "... Track skipped!\n" and next if (&meta_validate("SKIP", $cuesheet, $file, $track) && !$QUIET);
             print "... $dest\n" unless $QUIET;
 
-            &sys_cmd ("mkdir -p \"$destpath\"") || next ;
+            &sys_cmd ("mkdir -p \"$destpath\"") ;
             &sys_cmd ("$ff | $enc") || next;
             &sys_cmd ("mv -f \"$tempfile\" \"$destpath\"") || next;
 
