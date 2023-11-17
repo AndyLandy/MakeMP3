@@ -105,7 +105,8 @@ foreach my $cuefilename (@ARGV) {
             my $nonce = sprintf "%08X\n", rand(0xffffffff);
             my $tempfile = "$dest.$nonce";
             my $ff  = &ffmpeg($cuesheet, $file, $track);
-            my $enc = &encoder($cuesheet, $file, $track, $tempfile);
+            #my $enc = &encoder($cuesheet, $file, $track, $tempfile);
+            my $enc = &encoder($cuesheet, $file, $track, $dest);
 
             my $mp3time = &get_file_time($dest);
             next unless ($cuetime > $mp3time || $FORCE);
@@ -114,8 +115,8 @@ foreach my $cuefilename (@ARGV) {
             print "... $dest\n" unless $QUIET;
 
             &sys_cmd ("mkdir -p \"$destpath\"") ;
-            &sys_cmd ("$ff | $enc") || next;
-            &sys_cmd ("mv -f \"$tempfile\" \"$destpath\"") || next;
+            &sys_cmd ("$ff | $enc");
+            #&sys_cmd ("mv -f \"$tempfile\" \"$destpath\"") || next;
 
             push (@tracks, "\"$dest\"");
         }
