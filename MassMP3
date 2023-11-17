@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]
+  then
+    echo "Please supply exactly one list file and exactly one conf file!"
+		exit 1
+fi
+
+LIST="$1"
+CONF="$2"
+shift
+shift
+
+if ! [[ -v MAKEMP3_THREADS ]]; then
+	echo "\$MAKEMP3_THREADS must be defined!"
+	exit 2
+fi
+
+date
+list-cues "$LIST" | xargs -d "\n" -n 1 -P $MAKEMP3_THREADS MakeMP3 --conf="$CONF" "$@"
+date
