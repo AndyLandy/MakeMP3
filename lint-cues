@@ -44,7 +44,7 @@ sub lint_cuesheet {
 		}
 
 		$cuesheet =~ /^(?:\.\/)?(.*(?<!\\)\/).*?$/;
-		my $cueDir = $1;
+		my $cueDir  =  $1 // '';
 
 		my ($date, $art, $file, $perf, $title, $curated) = (
 			&line_date   ($line),
