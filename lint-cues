@@ -33,7 +33,7 @@ sub lint_cuesheet {
 
 	open my $handle, '<', $cuesheet or die "'$cuesheet': cannot open\n";
 
-	my ($dateCount, $artCount, $fileCount, $perfCount, $titlCount, $curaCount) = (0, 0, 0, 0, 0, 0);
+	my ($dateCount, $artCount, $fileCount, $perfCount, $titlCount, $curaCount, $gainCount) = (0, 0, 0, 0, 0, 0, 0);
 
 	while (my $line = <$handle>) {
 		chomp $line;
@@ -46,13 +46,14 @@ sub lint_cuesheet {
 		$cuesheet =~ /^(?:\.\/)?(.*(?<!\\)\/).*?$/;
 		my $cueDir  =  $1 // '';
 
-		my ($date, $art, $file, $perf, $title, $curated) = (
+		my ($date, $art, $file, $perf, $title, $curated, $gain) = (
 			&line_date   ($line),
 			&line_art    ($line),
 			&line_audio  ($line),
 			&line_perf   ($line),
 			&line_title  ($line),
-			&line_curated($line));
+			&line_curated($line),
+			&line_gain   ($line));
 
 		if (defined $art) {
 			++$artCount;
@@ -68,6 +69,12 @@ sub lint_cuesheet {
 		++$perfCount if defined $perf;
 		++$titlCount if defined $title;
 		++$curaCount if defined $curated;
+
+		if (defined $gain) {
+			++$gainCount;
+			print_warn $cuesheet, "invalid GAIN-tag value '$gain'" unless   $gain eq 'album'  or  $gain eq 'track'  or  $gain eq 'none';
+		}
+
 	}
 
 	# Warn on disc Y of X where Y>X
@@ -79,6 +86,8 @@ sub lint_cuesheet {
 	print_warn $cuesheet, 'no TITLE directives'     unless $titlCount>=1;
 #	print_warn $cuesheet, 'no CURATED tag'          unless $curaCount>=1;
 	print_warn $cuesheet, 'multiple CURATED tags'   unless $curaCount<=1;
+	print_warn $cuesheet, 'no GAIN tag'             unless $gainCount>=1;
+	print_warn $cuesheet, 'multiple GAIN tags'      unless $gainCount<=1;
 }
 
 sub line_date {
@@ -109,6 +118,11 @@ sub line_title {
 sub line_curated {
 	return undef unless $_[0] =~ /^\s*REM\s+CURATED\s+(?:"(.*)"\s*|.*)$/;
 	return $1;
+}
+
+sub line_gain {
+	return undef unless  $_[0] =~ /^\s*REM\s+GAIN\s+(?:"(.*)"\s*|.*)$/ and defined $1;
+	return lc($1);
 }
 
 sub check_file {
