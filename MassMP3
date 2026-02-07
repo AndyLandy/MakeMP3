@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# -lt 2 ]
+if [ $# -ne 2 ]
   then
     echo "Please supply exactly one list file and exactly one conf file!"
 		exit 1
