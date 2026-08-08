@@ -38,11 +38,6 @@ sub lint_cuesheet {
 	while (my $line = <$handle>) {
 		chomp $line;
 
-		if ($line =~ /^\s*REM\s*SKIP\s*TRUE\s*$/) {
-#			print_info $cuesheet, 'skipping';
-			return;
-		}
-
 		$cuesheet =~ /^(?:\.\/)?(.*(?<!\\)\/).*?$/;
 		my $cueDir  =  $1 // '';
 
